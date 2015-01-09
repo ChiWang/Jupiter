@@ -16,7 +16,6 @@ DmpEvtBgoPIDVar::DmpEvtBgoPIDVar()
 
 DmpEvtBgoPIDVar::~DmpEvtBgoPIDVar()
 {
-  fE_LB.clear();
 }
 
 void DmpEvtBgoPIDVar::Reset()
@@ -27,19 +26,19 @@ void DmpEvtBgoPIDVar::Reset()
     fFValue[i] = 0;
   }
   fTotalE = 0;
-  fBarID_MaxEnergy = 0;
   fPre_Direction.SetXYZ(0,0,0);
 }
 
 void DmpEvtBgoPIDVar::LoadFrom(DmpEvtBgoPIDVar *r)
 {
-  fE_LB.clear();
+  fE_LB = r->fE_LB;
   for(int i=0;i<BGO_LayerNO;++i){
-    fRMS2[i] = 0;
-    fFValue[i] = 0;
+    fRMS2[i] = r->fRMS2[i];
+    fFValue[i] = r->fFValue[i];
   }
-  fTotalE = 0;
-  fBarID_MaxEnergy = 0;
-  fPre_Direction.SetXYZ(0,0,0);
+  fTotalE = r->fTotalE;
+  fPre_Direction = r->fPre_Direction;
 }
+
+
 

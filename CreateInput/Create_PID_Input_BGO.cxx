@@ -26,7 +26,8 @@ short GetBarID(const short &gid){
 */
 
   namespace PATH{
-    TString  input = "./Data/";
+    TString  input = "./Input/";
+    TString  ouput = "./PID_V/";
   };
 
   bool CreateInput(TString file_Rec0="Rec0_H0-ANC_209_DMP_20141106_141222.root"){
@@ -42,7 +43,7 @@ short GetBarID(const short &gid){
 std::cout<<"DEBUG: "<<__FILE__<<"("<<__LINE__<<")"<<std::endl;
     TString outName = file_Rec0;
     outName.Replace(0,7,"PID_I_BGO");
-    TFile *output_f = new TFile(PATH::input+outName,"RECREATE");
+    TFile *output_f = new TFile(PATH::ouput+outName,"RECREATE");
     output_f->mkdir("Event");
     TTree *tree_o = new TTree("PID","PID");
     DmpEvtBgoPIDVar *PID_v_bgo = new DmpEvtBgoPIDVar(); 

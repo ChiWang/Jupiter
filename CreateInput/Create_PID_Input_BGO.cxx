@@ -27,7 +27,7 @@ short GetBarID(const short &gid){
 
   namespace PATH{
     TString  input = "./Input/";
-    TString  ouput = "./PID_V/";
+    TString  ouput = "./Output/";
   };
 
   bool CreateInput(TString file_Rec0="Rec0_H0-ANC_209_DMP_20141106_141222.root"){

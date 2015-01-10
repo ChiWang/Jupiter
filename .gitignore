@@ -8,6 +8,7 @@
 *.so
 *.os
 *.d
+Diction*
 
 # Precompiled Headers
 *.gch

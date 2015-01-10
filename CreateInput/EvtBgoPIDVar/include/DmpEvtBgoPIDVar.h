@@ -33,7 +33,7 @@ public:
    *  Define your data members at here
    *
    */
-  std::map<int,m_EnergiesInLayer>   fE_LB;
+  std::map<int,m_EnergiesInLayer >   fE_LB;
   double        fRMS2[BGO_LayerNO];
   double        fFValue[BGO_LayerNO];
   double        fTotalE;            // MeV

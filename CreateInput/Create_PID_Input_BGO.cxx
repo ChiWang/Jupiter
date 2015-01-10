@@ -55,9 +55,6 @@ std::cout<<"DEBUG: "<<__FILE__<<"("<<__LINE__<<")"<<std::endl;
       for(unsigned short ib =0;ib<event_bgo->fGlobalBarID.size();++ib){
         short id = event_bgo->fGlobalBarID[ib];
         int lid = DmpBgoBase::GetLayerID(id);
-        if(lid >13){
-std::cout<<"xxx__DEBUG: "<<__FILE__<<"("<<__LINE__<<")"<<std::endl;
-        }
         int bid =DmpBgoBase::GetBarID(id);
         (PID_v_bgo->fE_LB[lid]).insert(std::make_pair(bid,event_bgo->fEnergy[ib]));
       }
@@ -78,6 +75,7 @@ std::cout<<"DEBUG: "<<__FILE__<<"("<<__LINE__<<")"<<std::endl;
     delete event_bgo;
     delete PID_v_bgo;
     delete output_f;
+    delete input_f;
     //delete tree_o;
     return true;
   }

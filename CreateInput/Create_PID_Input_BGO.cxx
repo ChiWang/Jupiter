@@ -35,12 +35,13 @@ short GetBarID(const short &gid){
     if(input_f == 0){
       cout<<"open file failed...\t"<<PATH::input+file_Rec0<<endl;
       return false;
+    }else{
+      cout<<"Processing "<<PATH::input+file_Rec0<<endl;
     }
     TTree *tree_i = (TTree*)(input_f->Get(InputTree));
     DmpEvtBgoHits *event_bgo = new DmpEvtBgoHits();
     tree_i->SetBranchAddress("Bgo",&event_bgo);
 
-std::cout<<"DEBUG: "<<__FILE__<<"("<<__LINE__<<")"<<std::endl;
     TString outName = file_Rec0;
     outName.Replace(0,7,"PID_I_BGO");
     TFile *output_f = new TFile(PATH::ouput+outName,"RECREATE");
@@ -67,7 +68,6 @@ std::cout<<"DEBUG: "<<__FILE__<<"("<<__LINE__<<")"<<std::endl;
       tree_o->Fill();
       PID_v_bgo->Reset();
     }
-std::cout<<"DEBUG: "<<__FILE__<<"("<<__LINE__<<")"<<std::endl;
     output_f->cd("Event");
     tree_o->Write("",TObject::kOverwrite);
     output_f->Close();

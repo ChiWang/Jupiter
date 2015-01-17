@@ -9,6 +9,9 @@
 *.os
 *.d
 Diction*
+plots
+weights
+*.root
 
 # Precompiled Headers
 *.gch

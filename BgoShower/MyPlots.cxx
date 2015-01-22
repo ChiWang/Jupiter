@@ -6,9 +6,10 @@ void MyPlots()
 {
   //gSystem->Load("$DMPSWSYS/lib/libDmpBase.so");
   //gSystem->Load("$DMPSWSYS/lib/libDmpEvent.so");
-  gSystem->Load("$DMPSWWORK/lib/libDmpEvtBgoShower.so");
+  //gSystem->Load("$DMPSWWORK/lib/libDmpEvtBgoShower.so");
   //gInterpreter->AddIncludePath("$DMPSWSYS/include");
   //gInterpreter->AddIncludePath("$DMPSWWORK/include");
+  cout<<"Plots"<<endl;
 }
 
 namespace Cuts
@@ -22,6 +23,9 @@ namespace Conf
   vector<TCanvas*>  can;
   vector<TString>   inputFileName;
   TChain *chain = 0;
+
+  DmpEvtBgoShower *evt_bgo = 0;
+  long nEvts = 0;
 };
 
 void PrintInputFile()
@@ -38,6 +42,10 @@ void AddInputFile(TString f)
     Conf::chain = new TChain(__treeName);
   }
   Conf::chain->AddFile(f);
+  if(Conf::evt_bgo == 0) {
+    Conf::chain->SetBranchAddress("Bgo",&Conf::evt_bgo);
+  }
+  Conf::nEvts = Conf::chain->GetEntries();
 }
 
 void ResetInputFile(TString f)
@@ -49,6 +57,8 @@ void ResetInputFile(TString f)
   }
   Conf::chain = new TChain(__treeName);
   Conf::chain->AddFile(f);
+  Conf::chain->SetBranchAddress("Bgo",&Conf::evt_bgo);
+  Conf::nEvts = Conf::chain->GetEntries();
 }
 
 TChain *LinkTree()
@@ -58,6 +68,8 @@ TChain *LinkTree()
     for(int i = 0;i<Conf::inputFileName.size();++i){
       Conf::chain->AddFile(Conf::inputFileName[i]);
     }
+    Conf::chain->SetBranchAddress("Bgo",&Conf::evt_bgo);
+    Conf::nEvts = Conf::chain->GetEntries();
   }
   return Conf::chain;
 }
@@ -83,6 +95,8 @@ void EnergySpectrum(int layer=-1, int barID=-1, TCut cuts=Cuts::GlobalCut)
         // (-1,-1) total. (layer, -1) each bar in this layer. (-1,bar) this barID in each layer
   if(layer < 0 && barID < 0){
     MyDraw("Bgo.fTotE",cuts);
+    gPad->SetGrid();
+    MyDraw("Bgo.fTotE:EventHeader.fDeltaTime",cuts,"colz");
     gPad->SetGrid();
   }else if(layer < 0 && barID >= 0){
     TString name = "c";
@@ -168,36 +182,48 @@ void MaxEnergyLayer(TCut cuts = Cuts::GlobalCut)
   gPad->SetGridx();
 }
 
-  void DrawEvent(long evtID)
-  {
-    TString name = "EventID_";
-            name += evtID;
-    TH2F *xz =  new TH2F("XZ_"+name,"XZ",14,0,14,22,0,22);  xz->GetXaxis()->SetTitle("layer ID");   xz->GetYaxis()->SetTitle("bar ID");
-    TH2F *yz =  new TH2F("YZ_"+name,"YZ",14,0,14,22,0,22);  yz->GetXaxis()->SetTitle("layer ID");   yz->GetYaxis()->SetTitle("bar ID");
+void DrawEvent(long evtID)
+{
+  TString name = "EventID_";
+          name += evtID;
+  TH2F *xz =  new TH2F("XZ_"+name,"XZ",14,0,14,22,0,22);  xz->GetXaxis()->SetTitle("layer ID");   xz->GetYaxis()->SetTitle("bar ID");
+  TH2F *yz =  new TH2F("YZ_"+name,"YZ",14,0,14,22,0,22);  yz->GetXaxis()->SetTitle("layer ID");   yz->GetYaxis()->SetTitle("bar ID");
 
-    DmpEvtBgoShower *Bgo = 0;
-    LinkTree()->SetBranchAddress("Bgo",&Bgo);
-    LinkTree()->GetEntry(evtID);
+  LinkTree()->GetEntry(evtID);
 
-    for(int ic = 0;ic < Bgo->fClusters->GetEntriesFast();++ic){
-      DmpEvtBgoCluster *aC = dynamic_cast<DmpEvtBgoCluster*>(Bgo->fClusters->At(ic));
-      int lid = aC->fLayer;
-      for(int b = 0;b<aC->fFiredBar->GetEntriesFast();++b){
-        DmpBgoFiredBar *aB = dynamic_cast<DmpBgoFiredBar*>(aC->fFiredBar->At(b));
-        if(lid % 2 == 0){
-          yz->Fill(lid,aB->fBar,aB->fE/Bgo->fTotE);
-        }else{
-          xz->Fill(lid,aB->fBar,aB->fE/Bgo->fTotE);
-        }
+  cout<<"\n\n\tEvent ID "<<evtID<<endl;
+  Conf::evt_bgo->MyPrint();
+
+  for(int ic = 0;ic < Conf::evt_bgo->fClusters->GetEntriesFast();++ic){
+    DmpEvtBgoCluster *aC = dynamic_cast<DmpEvtBgoCluster*>(Conf::evt_bgo->fClusters->At(ic));
+    int lid = aC->fLayer;
+    for(int b = 0;b<aC->fFiredBar->GetEntriesFast();++b){
+      DmpBgoFiredBar *aB = dynamic_cast<DmpBgoFiredBar*>(aC->fFiredBar->At(b));
+      if(lid % 2 == 0){
+        yz->Fill(lid,aB->fBar,aB->fE/Conf::evt_bgo->fTotE);
+      }else{
+        xz->Fill(lid,aB->fBar,aB->fE/Conf::evt_bgo->fTotE);
       }
     }
-
-    Conf::can.push_back(new TCanvas("Display_"+name,"Display_"+name));
-    TCanvas *c0 = Conf::can[Conf::can.size()-1];
-    c0->Divide(2,1);
-    c0->cd(1); gPad->SetGrid(); xz->Draw("colz");
-    c0->cd(2); gPad->SetGrid(); yz->Draw("colz");
   }
+
+  Conf::can.push_back(new TCanvas("Display_"+name,"Display_"+name));
+  TCanvas *c0 = Conf::can[Conf::can.size()-1];
+  c0->Divide(2,1);
+  c0->cd(1); gPad->SetGrid(); xz->Draw("colz");
+  c0->cd(2); gPad->SetGrid(); yz->Draw("colz");
+}
+
+//-------------------------------------------------------------------
+void DrawEventByEnergy(double e0,double e1)
+{
+  for(long i=0;i<Conf::nEvts;++i){
+    LinkTree()->GetEntry(i);
+    if(Conf::evt_bgo->fTotE >= e0 && Conf::evt_bgo->fTotE <= e1){
+      DrawEvent(i);
+    }
+  }
+}
 
 };
 

@@ -16,6 +16,7 @@
 #include "TFile.h"
 #include "TTree.h"
 
+#include "DmpEvtHeader.h"
 #include "DmpEvtBgoHits.h"
 #include "DmpEvtBgoShower.h"
 #include "DmpBgoBase.h"
@@ -30,16 +31,17 @@ namespace Bgo{
     TString  inputPath = "./Input/";
     TString  ouputPath = "./Output/";
     TString  inputTree = "/Event/Cal";
-    TString  inputBranch = "Hits";
     long MaxEvents = 999999999;
   };
 
-  TString GetInputFileName(TString inLine = "A2Data00_20141105_190544_Hits.root"){
+  TString GetInputFileName(TString inLine = "A2Data00_20141105_190544_Hits.root")
+  {
     TObjArray *opt = inLine.Tokenize(" ");
     return ((TObjString*)opt->At(0))->GetString();
   }
 
-  TString GetOutFileName(TString inLine = "A2Data00_20141105_190544_Hits.root",TString hh="BS"){
+  TString GetOutFileName(TString inLine = "A2Data00_20141105_190544_Hits.root",TString hh="BS")
+  {
     TObjArray *opt = inLine.Tokenize(" ");
     TString out = ((TObjString*)opt->At(0))->GetString();
     out.Remove(0,out.First("_")+1);
@@ -50,31 +52,40 @@ namespace Bgo{
     return hh+"_"+tag+out;
   }
 
-  long BgoShowerCreator(TString file_Rec0 = "A2Data00_20141105_190544_Hits.root testData"){
+  bool BgoShowerCreator(TString file_Rec0 = "A2Data00_20141105_190544_Hits.root testData")
+  {
     TString inname = GetInputFileName(file_Rec0);
     TFile *input_f = TFile::Open(Conf::inputPath+inname);
     if(input_f == 0){
-      return -1;
+      return false;
     }
     TTree *tree_i = (TTree*)(input_f->Get(Conf::inputTree));
     DmpEvtBgoHits *event_bgo = new DmpEvtBgoHits();
-    tree_i->SetBranchAddress(Conf::inputBranch,&event_bgo);
+    tree_i->SetBranchAddress("Hits",&event_bgo);
+    DmpEvtHeader *event_Header = new DmpEvtHeader();
+    tree_i->SetBranchAddress("EventHeader",&event_Header);
 
+    long et = tree_i->GetEntries();
+    et =  (et>Conf::MaxEvents)?Conf::MaxEvents:et;
     TString outName = GetOutFileName(file_Rec0,"BS");
     outName.Remove(outName.Last('_'));
+    outName += "-Evts";
+    outName += et;
     TFile *output_f = new TFile(Conf::ouputPath+outName+".root","RECREATE");
     output_f->mkdir("Event");
     TTree *tree_o = new TTree("Rec0","Rec0");
+    DmpEvtHeader *evt_Header = new DmpEvtHeader();
+    tree_o->Branch("EventHeader",evt_Header->GetName(),&evt_Header);
     DmpEvtBgoShower *evt_BgoShower = new DmpEvtBgoShower(); 
     tree_o->Branch("Bgo",evt_BgoShower->GetName(),&evt_BgoShower);
 
+    cout<<"\nProcessing "<<input_f->GetName()<<"\t ===> "<<output_f->GetName()<<std::endl;
     //clock_t s0=clock();
     //std::cout<<"T0 = DEBUG: "<<__FILE__<<"("<<__LINE__<<")\t\t"<<s0<<std::endl;
-    long et = tree_i->GetEntries();
-    cout<<"\nProcessing "<<input_f->GetName()<<"\tevents = "<<et<<std::endl;
-    for(long ievt = 0;ievt<et && ievt < Conf::MaxEvents;++ievt){
+    for(long ievt = 0;ievt<et;++ievt){
       //if(ievt % 500 == 0) std::cout<<" ..."<<ievt<<std::endl;
       tree_i->GetEntry(ievt);
+      evt_Header->LoadFrom(event_Header);
       std::map<int,std::vector<DmpBgoFiredBar*> > firedBar; // key: layer ID
       short nBar = event_bgo->fGlobalBarID.size();
       for(short ib =0;ib<nBar;++ib){
@@ -169,6 +180,7 @@ namespace Bgo{
       }
       tree_o->Fill();
       evt_BgoShower->Reset();
+      evt_Header->Reset();
     //clock_t s3=clock();
     //std::cout<<"T3 = DEBUG: "<<__FILE__<<"("<<__LINE__<<")\t\t"<<s3<<std::endl;
     }
@@ -178,11 +190,13 @@ namespace Bgo{
 
     //clock_t se=clock();
     //std::cout<<"T end = DEBUG: "<<__FILE__<<"("<<__LINE__<<")\t\t"<<se<<std::endl;
+    delete event_Header;
     delete event_bgo;
     delete evt_BgoShower;
+    delete evt_Header;
     delete input_f;
     delete output_f;
-    return (et>Conf::MaxEvents)?Conf::MaxEvents:et;
+    return true;
   }
 
 };

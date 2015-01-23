@@ -1,16 +1,23 @@
-#include <vector>
-//#include "TH2F.h"
-#define  __treeName "/Event/Rec0"
+/*
+ *  $Id: MyPlots.cxx, 2015-01-23 13:58:40 DAMPE $
+ *  Author(s):
+ *    Chi WANG (chiwang@mail.ustc.edu.cn) 23/01/2015
+*/
 
-void MyPlots()
-{
-  //gSystem->Load("$DMPSWSYS/lib/libDmpBase.so");
-  //gSystem->Load("$DMPSWSYS/lib/libDmpEvent.so");
-  //gSystem->Load("$DMPSWWORK/lib/libDmpEvtBgoShower.so");
-  //gInterpreter->AddIncludePath("$DMPSWSYS/include");
-  //gInterpreter->AddIncludePath("$DMPSWWORK/include");
-  cout<<"Plots"<<endl;
-}
+#include <vector>
+#include <iostream>
+#include <fstream>
+
+#include "TCut.h"
+#include "TCanvas.h"
+#include "TH2F.h"
+#include "TChain.h"
+#include "TStyle.h"
+#include "DmpEvtBgoShower.h"
+
+#ifndef MyPlot_CXX
+#define MyPlot_CXX
+#define  __treeName "/Event/Rec0"
 
 namespace Cuts
 {
@@ -30,7 +37,7 @@ namespace Conf
 
 void PrintInputFile()
 {
-  for(int i =0;i<Conf::inputFileName.size();++i){
+  for(unsigned int i =0;i<Conf::inputFileName.size();++i){
     cout<<Conf::inputFileName[i]<<endl;
   }
 }
@@ -46,6 +53,7 @@ void AddInputFile(TString f)
     Conf::chain->SetBranchAddress("Bgo",&Conf::evt_bgo);
   }
   Conf::nEvts = Conf::chain->GetEntries();
+std::cout<<"===>: entries: "<<Conf::nEvts<<std::endl;
 }
 
 void ResetInputFile(TString f)
@@ -59,17 +67,19 @@ void ResetInputFile(TString f)
   Conf::chain->AddFile(f);
   Conf::chain->SetBranchAddress("Bgo",&Conf::evt_bgo);
   Conf::nEvts = Conf::chain->GetEntries();
+std::cout<<"===>: entries: "<<Conf::nEvts<<std::endl;
 }
 
 TChain *LinkTree()
 {
   if(Conf::chain == 0 && Conf::inputFileName.size()){
     Conf::chain  = new TChain(__treeName);
-    for(int i = 0;i<Conf::inputFileName.size();++i){
+    for(unsigned int i = 0;i<Conf::inputFileName.size();++i){
       Conf::chain->AddFile(Conf::inputFileName[i]);
     }
     Conf::chain->SetBranchAddress("Bgo",&Conf::evt_bgo);
     Conf::nEvts = Conf::chain->GetEntries();
+std::cout<<"===>: entries: "<<Conf::nEvts<<std::endl;
   }
   return Conf::chain;
 }
@@ -83,9 +93,7 @@ void MyDraw(TString exp, TCut cuts= Cuts::GlobalCut, TString opt="")
   Conf::can.push_back(new TCanvas(cName,cName));
   Conf::can[Conf::can.size()-1]->cd();
 
-std::cout<<"DEBUG: "<<__FILE__<<"("<<__LINE__<<")"<<std::endl;
   LinkTree()->Draw(exp,cuts,opt);
-std::cout<<"DEBUG: "<<__FILE__<<"("<<__LINE__<<")"<<std::endl;
 }
 
 namespace Plot
@@ -226,5 +234,8 @@ void DrawEventByEnergy(double e0,double e1)
 }
 
 };
+
+#endif
+
 
 

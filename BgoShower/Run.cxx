@@ -4,23 +4,34 @@
 void Run()
 {
   FileStat_t x;
-  TString libName ="libBgoShowerCreator";
-  if(gSystem->GetPathInfo(libName,x)){
+  TString libName0 ="libBgoShowerCreator";
+  if(gSystem->GetPathInfo(libName0,x)){
     gSystem->Load("$DMPSWSYS/lib/libDmpBase.so");
     gSystem->Load("$DMPSWSYS/lib/libDmpEvent.so");
     gSystem->Load("$DMPSWWORK/lib/libDmpEvtBgoShower.so");
     gInterpreter->AddIncludePath("$DMPSWSYS/include");
     gInterpreter->AddIncludePath("$DMPSWWORK/include");
-    gSystem->CompileMacro("./BgoShowerCreator.cxx","k",libName);
+    gSystem->CompileMacro("./BgoShowerCreator.cxx","k",libName0);
   }else{
-    gSystem->Load(libName);
+    gSystem->Load(libName0);
+  }
+
+  TString libName1 ="libMyPlot";
+  if(gSystem->GetPathInfo(libName1,x)){
+    //gSystem->Load("$DMPSWSYS/lib/libDmpEvent.so");
+    gSystem->Load("$DMPSWWORK/lib/libDmpEvtBgoShower.so");
+    //gInterpreter->AddIncludePath("$DMPSWSYS/include");
+    gInterpreter->AddIncludePath("$DMPSWWORK/include");
+    gSystem->CompileMacro("./MyPlots.cxx","k",libName1);
+  }else{
+    gSystem->Load(libName1);
   }
 }
 
 void MyTest()
 {
   DAMPE::Bgo::Conf::ouputPath = "./testData/";
-  //DAMPE::Bgo::Conf::MaxEvents = 2;
+  DAMPE::Bgo::Conf::MaxEvents = 2;
   DAMPE::Bgo::BgoShowerCreator();
   //DAMPE::Bgo::BgoShowerCreator("A2Data00_20141111_022025_Hits.root electron M300 P93_93_0");
 }

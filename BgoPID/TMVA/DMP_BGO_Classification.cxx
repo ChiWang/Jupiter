@@ -330,7 +330,7 @@ void LoadGUI(TString fileName)
    if (!gROOT->IsBatch()) TMVAGui( fileName );
 }
 
-void DMP_BGO_Classification( TString myMethodList = "" ) // spilt by ,
+void DMP_BGO_Classification(TString myMethodList = "",TString fname = "./tmva_class_example.root") // spilt by ,
 {
         /*
    // The explicit loading of the shared libTMVA is done in TMVAlogon.C, defined in .rootrc
@@ -393,8 +393,6 @@ void DMP_BGO_Classification( TString myMethodList = "" ) // spilt by ,
 
    // Read training and test data
    // (it is also possible to use ASCII format as input -> see TMVA Users Guide)
-   //TString fname = "./TrainingData.root";
-   TString fname = "./tmva_class_example.root";
    if (gSystem->AccessPathName( fname ))  // file does not exist in local directory
       gSystem->Exec("wget http://root.cern.ch/files/tmva_class_example.root");
    TFile *inputFile = TFile::Open( fname );

@@ -236,6 +236,17 @@ void DrawEventByEnergy(double e0,double e1)
   }
 }
 
+void DrawEventByCondition(bool con)
+{
+  for(long i=0;i<Conf::nEvts;++i){
+    Conf::LinkTree()->GetEntry(i);
+    if(con){
+      DrawThisEvent(i);
+    }
+  }
+}
+
+
 };
 
 #endif

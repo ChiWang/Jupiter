@@ -1,9 +1,13 @@
 
 #include "DMP_BGO_Classification.cxx"
 
-void Run(){
+void Run(int doit=0){
   gSystem->Load("$ROOTSYS/lib/libTMVA.so");
-  DMP_BGO_Classification("BDT,BDTG,BDTB,BDTD,BDTF,MLPBNN,MLP,TMlpANN");
+  gSystem->Load("$DMPSWSYS/lib/libDmpEvent.so");
+  gSystem->Load("$DMPSWWORK/lib/libDmpEvtBgoShower.so");
+  if(doit){
+    DMP_BGO_Classification("BDTF,MLPBNN,MLP,TMlpANN");
+  }
 }
 
 

@@ -3,7 +3,7 @@
 
 void Run(){
   gSystem->Load("$ROOTSYS/lib/libTMVA.so");
-  DMP_BGO_Classification("BDT,BDTG,BDTB,BDTD,BDTF,MLPBNN,MLP,TMlpANN");
+  DMP_BGO_Classification("MLP,TMlpANN");
 }
 
 

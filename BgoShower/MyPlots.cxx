@@ -1,5 +1,5 @@
 /*
- *  $Id: MyPlots.cxx, 2015-01-23 13:58:40 DAMPE $
+ *  $Id: MyPlots.cxx, 2015-01-23 14:23:31 DAMPE $
  *  Author(s):
  *    Chi WANG (chiwang@mail.ustc.edu.cn) 23/01/2015
 */
@@ -19,6 +19,8 @@
 #define MyPlot_CXX
 #define  __treeName "/Event/Rec0"
 
+namespace Plot
+{
 namespace Cuts
 {
   TCut GlobalCut = "Bgo.fTotE > 0";
@@ -29,17 +31,39 @@ namespace Conf
 {
   vector<TCanvas*>  can;
   vector<TString>   inputFileName;
-  TChain *chain = 0;
 
-  DmpEvtBgoShower *evt_bgo = 0;
   long nEvts = 0;
+  TChain *chain = 0;
+  DmpEvtBgoShower *evt_bgo = 0;
+
+  TChain *LinkTree()
+  {
+    if(chain == 0 && inputFileName.size()){
+      chain  = new TChain(__treeName);
+      for(unsigned int i = 0;i<inputFileName.size();++i){
+        chain->AddFile(inputFileName[i]);
+      }
+      chain->SetBranchAddress("Bgo",&evt_bgo);
+      nEvts = chain->GetEntries();
+      std::cout<<"===>  entries: "<<nEvts<<std::endl;
+    }
+    return chain;
+  }
+
 };
 
-void PrintInputFile()
+void ResetInputFile(TString f)
 {
-  for(unsigned int i =0;i<Conf::inputFileName.size();++i){
-    cout<<Conf::inputFileName[i]<<endl;
+  Conf::inputFileName.clear();
+  Conf::inputFileName.push_back(f);
+  if(Conf::chain){
+    delete Conf::chain;
   }
+  Conf::chain = new TChain(__treeName);
+  Conf::chain->AddFile(f);
+  Conf::chain->SetBranchAddress("Bgo",&Conf::evt_bgo);
+  Conf::nEvts = Conf::chain->GetEntries();
+std::cout<<"===>  entries: "<<Conf::nEvts<<std::endl;
 }
 
 void AddInputFile(TString f)
@@ -53,59 +77,44 @@ void AddInputFile(TString f)
     Conf::chain->SetBranchAddress("Bgo",&Conf::evt_bgo);
   }
   Conf::nEvts = Conf::chain->GetEntries();
-std::cout<<"===>: entries: "<<Conf::nEvts<<std::endl;
+std::cout<<"===>  entries: "<<Conf::nEvts<<std::endl;
 }
 
-void ResetInputFile(TString f)
+void PrintInputFile()
 {
-  Conf::inputFileName.clear();
-  Conf::inputFileName.push_back(f);
-  if(Conf::chain){
-    delete Conf::chain;
-  }
-  Conf::chain = new TChain(__treeName);
-  Conf::chain->AddFile(f);
-  Conf::chain->SetBranchAddress("Bgo",&Conf::evt_bgo);
-  Conf::nEvts = Conf::chain->GetEntries();
-std::cout<<"===>: entries: "<<Conf::nEvts<<std::endl;
-}
-
-TChain *LinkTree()
-{
-  if(Conf::chain == 0 && Conf::inputFileName.size()){
-    Conf::chain  = new TChain(__treeName);
-    for(unsigned int i = 0;i<Conf::inputFileName.size();++i){
-      Conf::chain->AddFile(Conf::inputFileName[i]);
+  if(Conf::inputFileName.size()){
+    for(unsigned int i =0;i<Conf::inputFileName.size();++i){
+      cout<<Conf::inputFileName[i]<<endl;
     }
-    Conf::chain->SetBranchAddress("Bgo",&Conf::evt_bgo);
-    Conf::nEvts = Conf::chain->GetEntries();
-std::cout<<"===>: entries: "<<Conf::nEvts<<std::endl;
+  }else{
+    cout<<"Do NOT have any input files"<<endl;
   }
-  return Conf::chain;
 }
 
 void MyDraw(TString exp, TCut cuts= Cuts::GlobalCut, TString opt="")
 {
+  if(Conf::inputFileName.size() == 0){
+    cout<<"\tWARNING:\t do not have any input files"<<endl;
+    cout<<"\t\tPlot::ResetInputFile(filename)"<<endl;
+    cout<<"\t\tPlot::AddInputFile(filename)\n"<<endl;
+    return;
+  }
   TString cName = "c";
           cName +=Conf::can.size();
           cName +="--"+exp;
 
   Conf::can.push_back(new TCanvas(cName,cName));
   Conf::can[Conf::can.size()-1]->cd();
-
-  LinkTree()->Draw(exp,cuts,opt);
+  Conf::LinkTree()->Draw(exp,cuts,opt);
+  gPad->SetGrid();
 }
 
-namespace Plot
-{
 void EnergySpectrum(int layer=-1, int barID=-1, TCut cuts=Cuts::GlobalCut)
 {
         // (-1,-1) total. (layer, -1) each bar in this layer. (-1,bar) this barID in each layer
   if(layer < 0 && barID < 0){
     MyDraw("Bgo.fTotE",cuts);
-    gPad->SetGrid();
     MyDraw("Bgo.fTotE:EventHeader.fDeltaTime",cuts,"colz");
-    gPad->SetGrid();
   }else if(layer < 0 && barID >= 0){
     TString name = "c";
     name += Conf::can.size();
@@ -122,7 +131,7 @@ void EnergySpectrum(int layer=-1, int barID=-1, TCut cuts=Cuts::GlobalCut)
       name +=",";
       name +=barID;
       name +=")";
-      LinkTree()->Draw(name,cuts);
+      Conf::LinkTree()->Draw(name,cuts);
     }
   }else if(layer >=0 && barID < 0){
     TString name = "c";
@@ -139,18 +148,18 @@ void EnergySpectrum(int layer=-1, int barID=-1, TCut cuts=Cuts::GlobalCut)
       name +=",";
       name +=i;
       name +=")";
-      LinkTree()->Draw(name,cuts);
+      Conf::LinkTree()->Draw(name,cuts);
     }
     c0->cd(23);
     name = "Bgo.GetTotalEnergy(";
     name += layer;
     name += ")";
-    LinkTree()->Draw(name,cuts);
+    Conf::LinkTree()->Draw(name,cuts);
     c0->cd(24);
     name = "Bgo.GetMaxClusterInLayer(";
     name += layer;
     name += ")->fSeedBarID";
-    LinkTree()->Draw(name,cuts);
+    Conf::LinkTree()->Draw(name,cuts);
   }else{
     TString ex= "Bgo.GetEnergyOfBar(";
     ex +=layer;
@@ -165,39 +174,33 @@ void Direction(TCut cuts=Cuts::GlobalCut)
 {
   gStyle->SetStatStyle();
   MyDraw("Bgo.GetTrackDirection().Theta()",cuts);
-  gPad->SetGridx();
   MyDraw("Bgo.GetTrackDirection().Theta():Bgo.GetMaxEnergyLayerID()",cuts,"*");
-  gPad->SetGrid();
   MyDraw("Bgo.GetTrackDirection().Theta():Bgo.fTotE",cuts,"*");
-  gPad->SetGrid();
 }
 
 void EntryPoint(TCut cuts = Cuts::VerticalMips)
 {
   MyDraw("Bgo.GetEntryPoint().y():Bgo.GetEntryPoint().x()",cuts,"colz");
-  gPad->SetGrid();
 }
 
 void EntryBarID(TCut cuts = Cuts::VerticalMips)
 {
   MyDraw("Bgo.GetCoGBarIDInLayer(0):Bgo.GetCoGBarIDInLayer(1)",cuts,"colz");
-  gPad->SetGrid();
 }
 
 void MaxEnergyLayer(TCut cuts = Cuts::GlobalCut)
 {
   MyDraw("Bgo.GetMaxEnergyLayerID()",cuts);
-  gPad->SetGridx();
 }
 
-void DrawEvent(long evtID)
+void DrawThisEvent(long evtID)
 {
   TString name = "EventID_";
           name += evtID;
   TH2F *xz =  new TH2F("XZ_"+name,"XZ",14,0,14,22,0,22);  xz->GetXaxis()->SetTitle("layer ID");   xz->GetYaxis()->SetTitle("bar ID");
   TH2F *yz =  new TH2F("YZ_"+name,"YZ",14,0,14,22,0,22);  yz->GetXaxis()->SetTitle("layer ID");   yz->GetYaxis()->SetTitle("bar ID");
 
-  LinkTree()->GetEntry(evtID);
+  Conf::LinkTree()->GetEntry(evtID);
 
   cout<<"\n\n\tEvent ID "<<evtID<<endl;
   Conf::evt_bgo->MyPrint();
@@ -226,9 +229,9 @@ void DrawEvent(long evtID)
 void DrawEventByEnergy(double e0,double e1)
 {
   for(long i=0;i<Conf::nEvts;++i){
-    LinkTree()->GetEntry(i);
+    Conf::LinkTree()->GetEntry(i);
     if(Conf::evt_bgo->fTotE >= e0 && Conf::evt_bgo->fTotE <= e1){
-      DrawEvent(i);
+      DrawThisEvent(i);
     }
   }
 }

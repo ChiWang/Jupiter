@@ -32,13 +32,14 @@
 #include <map>
 #include <string>
 
-#include "TChain.h"
+//#include "TChain.h"
 #include "TFile.h"
 #include "TTree.h"
 #include "TString.h"
 #include "TObjString.h"
 #include "TSystem.h"
 #include "TROOT.h"
+#include "TMVAGui.C"
 
 
 #if not defined(__CINT__) || defined(__MAKECINT__)
@@ -315,6 +316,7 @@ bool BookMethod(TMVA::Factory *fac,TString methodList)
   return true;
 }
 
+/*
 void LoadGUI(TString fileName)
 {
    // Launch the GUI for the root macros
@@ -329,6 +331,7 @@ void LoadGUI(TString fileName)
    gROOT->ProcessLine(".L TMVAGui.C");
    if (!gROOT->IsBatch()) TMVAGui( fileName );
 }
+*/
 
 void DMP_BGO_Classification(TString myMethodList = "",TString fname = "./tmva_class_example.root") // spilt by ,
 {
@@ -496,6 +499,7 @@ void DMP_BGO_Classification(TString myMethodList = "",TString fname = "./tmva_cl
    std::cout << "==> TMVAClassification is done!" << std::endl;
    delete factory;
 
-   if (!gROOT->IsBatch()){LoadGUI( outputFile->GetName() );}
+   //if (!gROOT->IsBatch()){LoadGUI( outputFile->GetName() );}
+   if (!gROOT->IsBatch()) TMVAGui( outputFile->GetName() );
 }
 

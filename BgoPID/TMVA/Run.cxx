@@ -6,7 +6,7 @@ void Run(int doit=0){
   gSystem->Load("$DMPSWSYS/lib/libDmpEvent.so");
   gSystem->Load("$DMPSWWORK/lib/libDmpEvtBgoShower.so");
   if(doit){
-    DMP_BGO_Classification("BDTF,MLPBNN,MLP,TMlpANN");
+    DMP_BGO_Classification("MLP,TMlpANN");
   }
 }
 

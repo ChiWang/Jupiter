@@ -11,6 +11,7 @@
 #include "TCut.h"
 #include "TCanvas.h"
 #include "TH2F.h"
+#include "TProfile.h"
 #include "TChain.h"
 #include "TStyle.h"
 #include "DmpEvtBgoShower.h"
@@ -21,12 +22,6 @@
 
 namespace Plot
 {
-namespace Cuts
-{
-  TCut GlobalCut = "Bgo.fTotE > 0";
-  TCut VerticalMips = "Bgo.GetFiredBarNumber() == 14 && Bgo.GetPileupRatio() == 0";
-};
-
 namespace Conf
 {
   vector<TCanvas*>  can;
@@ -34,7 +29,7 @@ namespace Conf
 
   long nEvts = 0;
   TChain *chain = 0;
-  DmpEvtBgoShower *evt_bgo = 0;
+  DmpEvtBgoShower *evt_bgo = new DmpEvtBgoShower();
 
   TChain *LinkTree()
   {
@@ -50,6 +45,13 @@ namespace Conf
     return chain;
   }
 
+};
+
+namespace Cuts
+{
+  TCut GlobalCut = "Bgo.fTotE > 0";
+  TCut VerticalMips = "Bgo.GetFiredBarNumber() == 14 && Bgo.GetPileupRatio() == 0";
+  TCut MipsWindow = "Bgo.fTotE > 200 && Bgo.fTotE <450 && Bgo.fLRMS > 3.6 && BGo.fLRMS < 4.4 && Bgo.GetTotalRMS()>-2 && Bgo.GetTotalRMS()<2";
 };
 
 void ResetInputFile(TString f)
@@ -91,7 +93,7 @@ void PrintInputFile()
   }
 }
 
-void MyDraw(TString exp, TCut cuts= Cuts::GlobalCut, TString opt="")
+void MyDraw(TString exp, TCut cuts= Cuts::GlobalCut, TString opt="",bool newCanv=true)
 {
   if(Conf::inputFileName.size() == 0){
     cout<<"\tWARNING:\t do not have any input files"<<endl;
@@ -99,14 +101,43 @@ void MyDraw(TString exp, TCut cuts= Cuts::GlobalCut, TString opt="")
     cout<<"\t\tPlot::AddInputFile(filename)\n"<<endl;
     return;
   }
-  TString cName = "c";
-          cName +=Conf::can.size();
-          cName +="--"+exp;
+  if(newCanv){
+    TString cName = "c";
+            cName +=Conf::can.size();
+            cName +="--"+exp;
 
-  Conf::can.push_back(new TCanvas(cName,cName));
-  Conf::can[Conf::can.size()-1]->cd();
+    Conf::can.push_back(new TCanvas(cName,cName));
+    Conf::can[Conf::can.size()-1]->cd();
+  }
   Conf::LinkTree()->Draw(exp,cuts,opt);
   gPad->SetGrid();
+}
+
+void EnergyProfile(TCut cuts=Cuts::GlobalCut)
+{
+    TString cName = "c";
+          cName +=Conf::can.size();
+          cName +="Energy_In_Layer";
+
+    Conf::can.push_back(new TCanvas(cName,cName));
+    TCanvas *c = Conf::can[Conf::can.size()-1];
+    c->Divide(2,1);
+    c->cd(2);
+    MyDraw("Bgo.GetEnergyOfEMaxLayer():Bgo.GetMaxEnergyLayerID()",cuts,"*",false);
+
+    TH2D *eInL = new TH2D(cName,"Energy In Layer",14,0,14,500,0,8000);
+    for(int ievt=0;ievt<Conf::nEvts;++ievt){
+      Conf::chain->GetEntry(ievt);
+      if(Conf::evt_bgo->GetFiredBarNumber() == 14 && Conf::evt_bgo->GetPileupRatio() == 0){
+        //continue;
+      }
+      for(int il=0;il<BGO_LayerNO;++il){
+        eInL->Fill(il,Conf::evt_bgo->GetTotalEnergy(il));
+      }
+    }
+    c->cd(1)->Divide(1,2,0,0);
+    c->cd(1)->cd(1);  eInL->Draw();  gPad->SetGrid();
+    c->cd(1)->cd(2);  eInL->ProfileX()->Draw("e"); gPad->SetGrid();
 }
 
 void EnergySpectrum(int layer=-1, int barID=-1, TCut cuts=Cuts::GlobalCut)
@@ -188,10 +219,8 @@ void EntryBarID(TCut cuts = Cuts::VerticalMips)
   MyDraw("Bgo.GetCoGBarIDInLayer(0):Bgo.GetCoGBarIDInLayer(1)",cuts,"colz");
 }
 
-void MaxEnergyLayer(TCut cuts = Cuts::GlobalCut)
-{
-  MyDraw("Bgo.GetMaxEnergyLayerID()",cuts);
-}
+//void // RFRatio by layer TH2D
+// RMS value by layer,  RMS2RMSTotal by layer
 
 void DrawThisEvent(long evtID)
 {
@@ -225,7 +254,6 @@ void DrawThisEvent(long evtID)
   c0->cd(2); gPad->SetGrid(); yz->Draw("colz");
 }
 
-//-------------------------------------------------------------------
 void DrawEventByEnergy(double e0,double e1)
 {
   for(long i=0;i<Conf::nEvts;++i){
@@ -238,6 +266,11 @@ void DrawEventByEnergy(double e0,double e1)
 
 void DrawEventByCondition(bool con)
 {
+// *
+// *  TODO:  not finish...
+//              How does root recongnize TCut which is a string??
+// *
+
   for(long i=0;i<Conf::nEvts;++i){
     Conf::LinkTree()->GetEntry(i);
     if(con){

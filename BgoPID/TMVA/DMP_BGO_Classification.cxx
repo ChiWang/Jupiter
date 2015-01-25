@@ -48,6 +48,11 @@
 #include "TMVA/Tools.h"
 #endif
 
+#include "DmpEvtBgoShower.h"
+#include "DmpEvtHeader.h"
+
+#define __treeName  "/Event/Rec0"
+
 bool BookMethod(TMVA::Factory *fac,TString methodList)
 {
   std::map<std::string,int> Use;
@@ -316,24 +321,7 @@ bool BookMethod(TMVA::Factory *fac,TString methodList)
   return true;
 }
 
-/*
-void LoadGUI(TString fileName)
-{
-   // Launch the GUI for the root macros
-   // to get access to the GUI and all tmva macros
-   TString tmva_dir(TString(gRootDir) + "/tmva");
-   //cout<<tmva_dir<<endl;
-   if(gSystem->Getenv("TMVASYS")){
-      tmva_dir = TString(gSystem->Getenv("TMVASYS"));
-      std::cout<<"DEBUG: "<<__FILE__<<"("<<__LINE__<<")"<<std::endl;
-   }
-   gROOT->SetMacroPath(tmva_dir + "/test/:" + gROOT->GetMacroPath() );
-   gROOT->ProcessLine(".L TMVAGui.C");
-   if (!gROOT->IsBatch()) TMVAGui( fileName );
-}
-*/
-
-void DMP_BGO_Classification(TString myMethodList = "",TString fname = "./tmva_class_example.root") // spilt by ,
+void DMP_BGO_Classification(TString myMethodList = "",TString SFName = "./4GeV_electron.root",TString BFName = "./10GeV_Pion.root") // spilt by ,
 {
         /*
    // The explicit loading of the shared libTMVA is done in TMVAlogon.C, defined in .rootrc
@@ -352,12 +340,20 @@ void DMP_BGO_Classification(TString myMethodList = "",TString fname = "./tmva_cl
    // method based)
    */
 
-   std::cout << std::endl;
-   std::cout << "==> Start TMVAClassification" << std::endl;
+   TFile   *input_SF = TFile::Open(SFName);
+   if(input_SF == 0){
+     return;
+   }
+   TTree *signal     = (TTree*)input_SF->Get(__treeName);
+   TFile    *input_BF = TFile::Open(BFName);
+   if(input_BF == 0){
+     return;
+   }
+   TTree *background = (TTree*)input_BF->Get(__treeName);
+// *
+// *  TODO:
+// *
    // This loads the library
-// *
-// *  TODO: 
-// *
    //TMVA::Tools::Instance();   // by me
 
    // --------------------------------------------------------------------------------------------------
@@ -365,6 +361,11 @@ void DMP_BGO_Classification(TString myMethodList = "",TString fname = "./tmva_cl
    // Create a ROOT output file where TMVA will store ntuples, histograms, etc.
    TString outfileName( "TMVA.root" );
    TFile* outputFile = TFile::Open( outfileName, "RECREATE" );
+   std::cout << std::endl;
+   std::cout << "==> Start TMVAClassification:"<<endl;
+   std::cout<<"\n\tinput signal file:\t"<<input_SF->GetName()<<std::endl;
+   std::cout<<"\n\tinput background file:\t"<<input_BF->GetName() << std::endl;
+   std::cout<<"\n\t==> output file:\t"<<outputFile->GetName()<<std::endl;
 
    // Create the factory object. Later you can choose the methods
    // whose performance you'd like to investigate. The factory is 
@@ -382,28 +383,27 @@ void DMP_BGO_Classification(TString myMethodList = "",TString fname = "./tmva_cl
    // Define the input variables that shall be used for the MVA training
    // note that you may also use variable expressions, such as: "3*var1/var2*abs(var3)"
    // [all types of expressions that can also be parsed by TTree::Draw( "expression" )]
-   factory->AddVariable( "myvar1 := var1+var2", 'F' );
-   factory->AddVariable( "myvar2 := var1-var2", "Expression 2", "", 'F' );
-   factory->AddVariable( "myvar3 := var1-2*var2", "Expression 3", "", 'F' );
-   factory->AddVariable( "var3",                "Variable 3", "units", 'F' );
-   factory->AddVariable( "var4",                "Variable 4", "units", 'F' );
+
+   factory->AddVariable( "Bgo.GetTotalRMS()","TotalRMS","",'F');
+   //factory->AddVariable( "Bgo.GetPileupRatio()","PileupRatio","",'F');
+   factory->AddVariable( "Bgo.fFValue[11]","F[11]","",'F');
+   factory->AddVariable( "Bgo.fFValue[12]","F[12]","",'F');
+   factory->AddVariable( "Bgo.fLRMS","LRMS","",'F');
+   factory->AddVariable( "Bgo.GetFiredBarNumber()","FiredBarNumber","",'I');
+   //factory->AddVariable( "Bgo.GetEnergyRatioOfEMaxLayer()","EnergyRatioOfEMaxLayer","",'F');
+   factory->AddVariable( "Bgo.GetWindowEnergyRatio()","WindowEnergyRatio","",'F');
+   factory->AddVariable( "Bgo.GetRMSOfEMaxLayer()","RMSOfEMaxLayer","",'F');
+   factory->AddVariable( "Bgo.GetRFRatioOfEMaxLayer()","RFRatioOfEMaxLayer","",'F');
 
    // You can add so-called "Spectator variables", which are not used in the MVA training,
    // but will appear in the final "TestTree" produced by TMVA. This TestTree will contain the
    // input variables, the response values of all trained MVAs, and the spectator variables
-   factory->AddSpectator( "spec1 := var1*2",  "Spectator 1", "units", 'F' );
-   factory->AddSpectator( "spec2 := var1*3",  "Spectator 2", "units", 'F' );
-
-   // Read training and test data
-   // (it is also possible to use ASCII format as input -> see TMVA Users Guide)
-   if (gSystem->AccessPathName( fname ))  // file does not exist in local directory
-      gSystem->Exec("wget http://root.cern.ch/files/tmva_class_example.root");
-   TFile *inputFile = TFile::Open( fname );
-   std::cout << "--- TMVAClassification       : Using input file: " << inputFile->GetName() << std::endl;
+   factory->AddSpectator( "Bgo.GetEntryPoint().x()","EntryPointX","mm",'F' );
+   factory->AddSpectator( "Bgo.GetEntryPoint().y()","EntryPointY","mm",'F' );
+   factory->AddSpectator( "Bgo.GetTrackDirection().Theta()","TrackTheta","",'F');
+   factory->AddSpectator( "Bgo.GetMaxEnergyLayerID()","MaxEnergyLayer","",'I');
+   factory->AddSpectator( "Bgo.fTotE","RecoEnergy","MeV",'F' );
    
-   // --- Register the training and test trees
-   TTree *signal     = (TTree*)inputFile->Get("TreeS");
-   TTree *background = (TTree*)inputFile->Get("TreeB");
    // global event weights per tree (see below for setting event-wise weights)
    Double_t signalWeight     = 1.0;
    Double_t backgroundWeight = 1.0;
@@ -415,50 +415,74 @@ void DMP_BGO_Classification(TString myMethodList = "",TString fname = "./tmva_cl
    // To give different trees for training and testing, do as follows:
    //    factory->AddSignalTree( signalTrainingTree, signalTrainWeight, "Training" );
    //    factory->AddSignalTree( signalTestTree,     signalTestWeight,  "Test" );
-   
+
+/*
    // Use the following code instead of the above two or four lines to add signal and background
    // training and test events "by hand"
    // NOTE that in this case one should not give expressions (such as "var1+var2") in the input
    //      variable definition, but simply compute the expression before adding the event
    //
    //     // --- begin ----------------------------------------------------------
-   //     std::vector<Double_t> vars( 4 ); // vector has size of number of input variables
-   //     Float_t  treevars[4], weight;
-   //     
-   //     // Signal
-   //     for (UInt_t ivar=0; ivar<4; ivar++) signal->SetBranchAddress( Form( "var%i", ivar+1 ), &(treevars[ivar]) );
-   //     for (UInt_t i=0; i<signal->GetEntries(); i++) {
-   //        signal->GetEntry(i);
-   //        for (UInt_t ivar=0; ivar<4; ivar++) vars[ivar] = treevars[ivar];
-   //        // add training and test events; here: first half is training, second is testing
-   //        // note that the weight can also be event-wise
-   //        if (i < signal->GetEntries()/2.0) factory->AddSignalTrainingEvent( vars, signalWeight );
-   //        else                              factory->AddSignalTestEvent    ( vars, signalWeight );
-   //     }
-   //   
-   //     // Background (has event weights)
-   //     background->SetBranchAddress( "weight", &weight );
-   //     for (UInt_t ivar=0; ivar<4; ivar++) background->SetBranchAddress( Form( "var%i", ivar+1 ), &(treevars[ivar]) );
-   //     for (UInt_t i=0; i<background->GetEntries(); i++) {
-   //        background->GetEntry(i);
-   //        for (UInt_t ivar=0; ivar<4; ivar++) vars[ivar] = treevars[ivar];
-   //        // add training and test events; here: first half is training, second is testing
-   //        // note that the weight can also be event-wise
-   //        if (i < background->GetEntries()/2) factory->AddBackgroundTrainingEvent( vars, backgroundWeight*weight );
-   //        else                                factory->AddBackgroundTestEvent    ( vars, backgroundWeight*weight );
-   //     }
+   std::vector<Double_t> vars(7); // vector has size of number of input variables
+    *  vars[0]:     position x
+    *  vars[1]:     position y
+    *  vars[2]:     direction xz
+    *  vars[3]:     direction yz
+    *  vars[4]:     TRMS
+    *  vars[5]:     LRMS
+    *  vars[6]:     RFRatio
+    *  vars[7]:     Fired Bar number
+    *  vars[8]:     Pileup Ratio
+   Float_t  treevars[4], weight;
+   
+   // Signal
+   for (UInt_t ivar=0; ivar<4; ivar++){
+           signal->SetBranchAddress( Form( "var%i", ivar+1 ), &(treevars[ivar]) );
+   }
+   for (UInt_t i=0; i<signal->GetEntries(); i++) {
+      signal->GetEntry(i);
+      for (UInt_t ivar=0; ivar<4; ivar++) {
+              vars[ivar] = treevars[ivar];
+      }
+      // add training and test events; here: first half is training, second is testing
+      // note that the weight can also be event-wise
+      if (i < signal->GetEntries()/2.0) factory->AddSignalTrainingEvent( vars, signalWeight );
+      else                              factory->AddSignalTestEvent    ( vars, signalWeight );
+   }
+   
+   // Background (has event weights)
+   background->SetBranchAddress( "weight", &weight );
+   for (UInt_t ivar=0; ivar<4; ivar++){
+           background->SetBranchAddress( Form( "var%i", ivar+1 ), &(treevars[ivar]) );
+   }
+   for (UInt_t i=0; i<background->GetEntries(); i++) {
+      background->GetEntry(i);
+      for (UInt_t ivar=0; ivar<4; ivar++) {
+              vars[ivar] = treevars[ivar];
+      }
+      // add training and test events; here: first half is training, second is testing
+      // note that the weight can also be event-wise
+      if (i < background->GetEntries()/2) factory->AddBackgroundTrainingEvent( vars, backgroundWeight*weight );
+      else                                factory->AddBackgroundTestEvent    ( vars, backgroundWeight*weight );
+   }
          // --- end ------------------------------------------------------------
+   */
    //
    // --- end of tree registration 
 
    // Set individual event weights (the variables must exist in the original TTree)
    //    for signal    : factory->SetSignalWeightExpression    ("weight1*weight2");
    //    for background: factory->SetBackgroundWeightExpression("weight1*weight2");
-   factory->SetBackgroundWeightExpression( "weight" );
+// *
+// *  TODO: what does the next line used for? 
+// *
+   //factory->SetBackgroundWeightExpression( "weight" );
 
    // Apply additional cuts on the signal and background samples (can be different)
-   TCut mycuts = ""; // for example: TCut mycuts = "abs(var1)<0.5 && abs(var2-0.5)<1";
-   TCut mycutb = ""; // for example: TCut mycutb = "abs(var1)<0.5";
+   // TODO: does thoes cuts will be applied for testing data??
+   TCut mycuts = "Bgo.fTotE > 200 && Bgo.fTotE <450 && Bgo.fLRMS > 3.6 && Bgo.fLRMS < 4.4 && Bgo.GetTotalRMS()>-2 && Bgo.GetTotalRMS()<2";
+   TCut mycutb = "Bgo.fTotE > 0"; // for example: TCut mycutb = "abs(var1)<0.5";
+   TCut mycutc = "Bgo.fTotE >3400 && Bgo.fTotE < 4000"; // for example: TCut mycutb = "abs(var1)<0.5";
 
    // Tell the factory how to use the training and testing events
    //
@@ -468,7 +492,7 @@ void DMP_BGO_Classification(TString myMethodList = "",TString fname = "./tmva_cl
    // To also specify the number of testing events, use:
    //    factory->PrepareTrainingAndTestTree( mycut,
    //                                         "NSigTrain=3000:NBkgTrain=3000:NSigTest=3000:NBkgTest=3000:SplitMode=Random:!V" );
-   factory->PrepareTrainingAndTestTree( mycuts, mycutb,
+   factory->PrepareTrainingAndTestTree( mycutc, mycutc,
                                         "nTrain_Signal=0:nTrain_Background=0:SplitMode=Random:NormMode=NumEvents:!V" );
 
    //-------------------------------------------------------------------

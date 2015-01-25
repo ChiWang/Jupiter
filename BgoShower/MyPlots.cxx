@@ -51,7 +51,7 @@ namespace Cuts
 {
   TCut GlobalCut = "Bgo.fTotE > 0";
   TCut VerticalMips = "Bgo.GetFiredBarNumber() == 14 && Bgo.GetPileupRatio() == 0";
-  TCut MipsWindow = "Bgo.fTotE > 200 && Bgo.fTotE <450 && Bgo.fLRMS > 3.6 && BGo.fLRMS < 4.4 && Bgo.GetTotalRMS()>-2 && Bgo.GetTotalRMS()<2";
+  TCut MipsWindow = "Bgo.fTotE > 200 && Bgo.fTotE <450 && Bgo.fLRMS > 3.5 && Bgo.fLRMS < 4.4 && Bgo.GetTotalRMS()>-2 && Bgo.GetTotalRMS()<2";
 };
 
 void ResetInputFile(TString f)
@@ -113,31 +113,114 @@ void MyDraw(TString exp, TCut cuts= Cuts::GlobalCut, TString opt="",bool newCanv
   gPad->SetGrid();
 }
 
-void EnergyProfile(TCut cuts=Cuts::GlobalCut)
+// *
+// *  TODO:  how to use TCuts as TTree::Draw() ?? 
+// *
+void EnergyProfile(bool skipMips = true,TCut cuts=Cuts::GlobalCut)
 {
     TString cName = "c";
           cName +=Conf::can.size();
           cName +="Energy_In_Layer";
 
-    Conf::can.push_back(new TCanvas(cName,cName));
-    TCanvas *c = Conf::can[Conf::can.size()-1];
-    c->Divide(2,1);
-    c->cd(2);
-    MyDraw("Bgo.GetEnergyOfEMaxLayer():Bgo.GetMaxEnergyLayerID()",cuts,"*",false);
-
+    TH2D *eMaxInL = new TH2D(cName+"MaxE","EMax In Layer",14,0,14,500,0,8000);
     TH2D *eInL = new TH2D(cName,"Energy In Layer",14,0,14,500,0,8000);
     for(int ievt=0;ievt<Conf::nEvts;++ievt){
       Conf::chain->GetEntry(ievt);
-      if(Conf::evt_bgo->GetFiredBarNumber() == 14 && Conf::evt_bgo->GetPileupRatio() == 0){
-        //continue;
+      if(Conf::evt_bgo->GetFiredBarNumber() == 14 && Conf::evt_bgo->GetPileupRatio() == 0 && skipMips){
+        continue;
       }
+      eMaxInL->Fill(Conf::evt_bgo->GetMaxEnergyLayerID(),Conf::evt_bgo->GetEnergyOfEMaxLayer());
       for(int il=0;il<BGO_LayerNO;++il){
         eInL->Fill(il,Conf::evt_bgo->GetTotalEnergy(il));
       }
     }
-    c->cd(1)->Divide(1,2,0,0);
-    c->cd(1)->cd(1);  eInL->Draw();  gPad->SetGrid();
-    c->cd(1)->cd(2);  eInL->ProfileX()->Draw("e"); gPad->SetGrid();
+
+    Conf::can.push_back(new TCanvas(cName,cName));
+    TCanvas *c = Conf::can[Conf::can.size()-1];
+
+    c->cd(2)->Divide(1,2,0,0);
+    c->cd(2);
+    gPad->SetGrid();
+    eMaxInL->SetMarkerStyle(6);
+    eMaxInL->Draw();
+    TProfile *eMaxInL_proX = eMaxInL->ProfileX();
+    eMaxInL_proX->SetMarkerStyle(30);
+    eMaxInL_proX->SetMarkerSize(2);
+    eMaxInL_proX->SetMarkerColor(2);
+    eMaxInL_proX->SetLineWidth(2);
+    eMaxInL_proX->SetLineColor(2);
+    eMaxInL_proX->Draw("esame");
+    c->cd(1);
+    gPad->SetGrid();
+    eInL->SetMarkerStyle(6);
+    eInL->Draw();
+    TProfile *eInL_proX = eInL->ProfileX();
+    eInL_proX->SetMarkerStyle(30);
+    eInL_proX->SetMarkerSize(2);
+    eInL_proX->SetMarkerColor(2);
+    eInL_proX->SetLineWidth(2);
+    eInL_proX->SetLineColor(2);
+    eInL_proX->Draw("samee");
+}
+
+void RMSFValueProfile(bool skipMips = true ,TCut cuts=Cuts::GlobalCut)
+{
+    TString cName = "c";
+          cName +=Conf::can.size();
+          cName +="RF_In_Layer";
+
+    TH2D *RMSInL = new TH2D(cName+"RMS","RMS In Layer",14,0,14,500,0,10);
+    TH2D *FInL = new TH2D(cName+"FValue","FValue In Layer",14,0,14,500,0,10);
+    TH2D *RFRatioInL = new TH2D(cName+"RFRatioValue","RFRatio In Layer",14,0,14,5000,0,100);
+    for(int ievt=0;ievt<Conf::nEvts;++ievt){
+      Conf::chain->GetEntry(ievt);
+      if(Conf::evt_bgo->GetFiredBarNumber() == 14 && Conf::evt_bgo->GetPileupRatio() == 0 && skipMips){
+        continue;
+      }
+      for(int i=0;i<BGO_LayerNO;++i){
+        RMSInL->Fill(i,Conf::evt_bgo->fRMS[i]);
+        FInL->Fill(i,Conf::evt_bgo->fFValue[i]);
+        RFRatioInL->Fill(i,Conf::evt_bgo->GetRFRatio(i));
+      }
+    }
+
+    Conf::can.push_back(new TCanvas(cName,cName));
+    TCanvas *c = Conf::can[Conf::can.size()-1];
+
+    c->Divide(1,3,0,0);
+    c->cd(1);
+    gPad->SetGrid();
+    RMSInL->SetMarkerStyle(6);
+    RMSInL->Draw();
+    TProfile *RMSInL_proX = RMSInL->ProfileX();
+    RMSInL_proX->SetMarkerStyle(30);
+    RMSInL_proX->SetMarkerSize(2);
+    RMSInL_proX->SetMarkerColor(2);
+    RMSInL_proX->SetLineWidth(2);
+    RMSInL_proX->SetLineColor(2);
+    RMSInL_proX->Draw("esame");
+    c->cd(2);
+    gPad->SetGrid();
+    FInL->SetMarkerStyle(6);
+    FInL->Draw();
+    TProfile *FInL_proX = FInL->ProfileX();
+    FInL_proX->SetMarkerStyle(30);
+    FInL_proX->SetMarkerSize(2);
+    FInL_proX->SetMarkerColor(2);
+    FInL_proX->SetLineWidth(2);
+    FInL_proX->SetLineColor(2);
+    FInL_proX->Draw("samee");
+    c->cd(3);
+    gPad->SetGrid();
+    RFRatioInL->SetMarkerStyle(6);
+    RFRatioInL->Draw();
+    TProfile *RFRatioInL_proX = RFRatioInL->ProfileX();
+    RFRatioInL_proX->SetMarkerStyle(30);
+    RFRatioInL_proX->SetMarkerSize(2);
+    RFRatioInL_proX->SetMarkerColor(2);
+    RFRatioInL_proX->SetLineWidth(2);
+    RFRatioInL_proX->SetLineColor(2);
+    RFRatioInL_proX->Draw("samee");
 }
 
 void EnergySpectrum(int layer=-1, int barID=-1, TCut cuts=Cuts::GlobalCut)
@@ -278,7 +361,6 @@ void DrawEventByCondition(bool con)
     }
   }
 }
-
 
 };
 

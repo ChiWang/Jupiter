@@ -14,7 +14,7 @@ void Run()
   }
 }
 
-void MyTest(TString useMethods="BDTG,MLP,MLPBFGS") //  split by ,
+void MyTest(TString useMethods="BDTG,MLP,MLPBFGS",TString sf = "./4GeV_electron.root",TString bf = "./10GeV_Proton.root") //  split by ,
 // TMlpANN  worse than MLP
 //
 {

@@ -394,6 +394,7 @@ void DMP_BGO_Classification(TString myMethodList = "",TString SFName = "./4GeV_e
    factory->AddVariable( "Bgo.GetWindowEnergyRatio()","WindowEnergyRatio","",'F');
    factory->AddVariable( "Bgo.GetRMSOfEMaxLayer()","RMSOfEMaxLayer","",'F');
    factory->AddVariable( "Bgo.GetRFRatioOfEMaxLayer()","RFRatioOfEMaxLayer","",'F');
+   factory->AddVariable( "Bgo.GetLayerIDOfMaxRMS()","LayerIDOfMaxRMS","",'I');
 
    // You can add so-called "Spectator variables", which are not used in the MVA training,
    // but will appear in the final "TestTree" produced by TMVA. This TestTree will contain the

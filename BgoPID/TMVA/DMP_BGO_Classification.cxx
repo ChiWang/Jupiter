@@ -378,7 +378,7 @@ void DMP_BGO_Classification(TString myMethodList = "",TString SFName = "./4GeV_e
    // All TMVA output can be suppressed by removing the "!" (not) in
    // front of the "Silent" argument in the option string
    TMVA::Factory *factory =  new TMVA::Factory( "TMVAClassification", outputFile,
-                    "!V:Silent:Color:DrawProgressBar:Transformations=I;D;P;G,D:AnalysisType=Classification");
+                    "V:!Silent:Color:DrawProgressBar:Transformations=I;D;P;G,D:AnalysisType=Classification");
 
    // Define the input variables that shall be used for the MVA training
    // note that you may also use variable expressions, such as: "3*var1/var2*abs(var3)"

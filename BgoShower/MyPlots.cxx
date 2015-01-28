@@ -23,7 +23,7 @@
 namespace Plot
 {
 namespace Conf
-{
+{ 
   vector<TCanvas*>  can;
   vector<TString>   inputFileName;
 
@@ -163,13 +163,14 @@ void EnergyProfile(bool skipMips = true,TCut cuts=Cuts::GlobalCut)
     eInL_proX->Draw("samee");
 }
 
-void RMSFValueProfile(bool skipMips = true ,TCut cuts=Cuts::GlobalCut)
+//-------------------------------------------------------------------
+TProfile *RMSFValueProfile(bool skipMips = true ,TCut cuts=Cuts::GlobalCut)
 {
     TString cName = "c";
           cName +=Conf::can.size();
           cName +="RF_In_Layer";
 
-    TH2D *RMSInL = new TH2D(cName+"RMS","RMS In Layer",14,0,14,500,0,10);
+    TH2D *RMSInL = new TH2D(cName+"RMS","RMS In Layer",14,0,14,500,0,1);
     TH2D *FInL = new TH2D(cName+"FValue","FValue In Layer",14,0,14,500,0,10);
     TH2D *RFRatioInL = new TH2D(cName+"RFRatioValue","RFRatio In Layer",14,0,14,5000,0,100);
     for(int ievt=0;ievt<Conf::nEvts;++ievt){
@@ -177,8 +178,9 @@ void RMSFValueProfile(bool skipMips = true ,TCut cuts=Cuts::GlobalCut)
       if(Conf::evt_bgo->GetFiredBarNumber() == 14 && Conf::evt_bgo->GetPileupRatio() == 0 && skipMips){
         continue;
       }
+      double totRMS = Conf::evt_bgo->GetTotalRMS();
       for(int i=0;i<BGO_LayerNO;++i){
-        RMSInL->Fill(i,Conf::evt_bgo->fRMS[i]);
+        RMSInL->Fill(i,Conf::evt_bgo->fRMS[i]/totRMS);
         FInL->Fill(i,Conf::evt_bgo->fFValue[i]);
         RFRatioInL->Fill(i,Conf::evt_bgo->GetRFRatio(i));
       }
@@ -221,6 +223,7 @@ void RMSFValueProfile(bool skipMips = true ,TCut cuts=Cuts::GlobalCut)
     RFRatioInL_proX->SetLineWidth(2);
     RFRatioInL_proX->SetLineColor(2);
     RFRatioInL_proX->Draw("samee");
+    return RMSInL_proX;
 }
 
 void EnergySpectrum(int layer=-1, int barID=-1, TCut cuts=Cuts::GlobalCut)
@@ -311,6 +314,8 @@ void DrawThisEvent(long evtID)
           name += evtID;
   TH2F *xz =  new TH2F("XZ_"+name,"XZ",14,0,14,22,0,22);  xz->GetXaxis()->SetTitle("layer ID");   xz->GetYaxis()->SetTitle("bar ID");
   TH2F *yz =  new TH2F("YZ_"+name,"YZ",14,0,14,22,0,22);  yz->GetXaxis()->SetTitle("layer ID");   yz->GetYaxis()->SetTitle("bar ID");
+  TH2D *eInL = new TH2D("energy profile"+name,"Energy In Layer",14,0,14,100,0,0.5);
+  TH2D *RMSInL = new TH2D("RMS in layer"+name,"RMS In Layer",14,0,14,100,0,0.5);
 
   Conf::LinkTree()->GetEntry(evtID);
 
@@ -329,12 +334,18 @@ void DrawThisEvent(long evtID)
       }
     }
   }
+  for(int il=0;il<BGO_LayerNO;++il){
+    eInL->Fill(il,Conf::evt_bgo->GetTotalEnergy(il)/Conf::evt_bgo->fTotE);
+    RMSInL->Fill(il,Conf::evt_bgo->fRMS[il]/Conf::evt_bgo->GetTotalRMS());
+  }
 
   Conf::can.push_back(new TCanvas("Display_"+name,"Display_"+name));
   TCanvas *c0 = Conf::can[Conf::can.size()-1];
-  c0->Divide(2,1);
+  c0->Divide(2,2);
   c0->cd(1); gPad->SetGrid(); xz->Draw("colz");
   c0->cd(2); gPad->SetGrid(); yz->Draw("colz");
+  c0->cd(3); gPad->SetGrid(); eInL->SetMarkerStyle(30);  eInL->Draw();
+  c0->cd(4); gPad->SetGrid(); RMSInL->SetMarkerStyle(27);  RMSInL->Draw();
 }
 
 void DrawEventByEnergy(double e0,double e1)

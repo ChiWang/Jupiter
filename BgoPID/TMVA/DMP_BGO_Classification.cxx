@@ -378,7 +378,7 @@ void DMP_BGO_Classification(TString myMethodList = "",TString SFName = "./4GeV_e
    // All TMVA output can be suppressed by removing the "!" (not) in
    // front of the "Silent" argument in the option string
    TMVA::Factory *factory =  new TMVA::Factory( "TMVAClassification", outputFile,
-                    "!V:Silent:Color:DrawProgressBar:Transformations=I;D;P;G,D:AnalysisType=Classification");
+                    "V:!Silent:Color:DrawProgressBar:Transformations=I;D;P;G,D:AnalysisType=Classification");
 
    // Define the input variables that shall be used for the MVA training
    // note that you may also use variable expressions, such as: "3*var1/var2*abs(var3)"
@@ -394,6 +394,7 @@ void DMP_BGO_Classification(TString myMethodList = "",TString SFName = "./4GeV_e
    factory->AddVariable( "Bgo.GetWindowEnergyRatio()","WindowEnergyRatio","",'F');
    factory->AddVariable( "Bgo.GetRMSOfEMaxLayer()","RMSOfEMaxLayer","",'F');
    factory->AddVariable( "Bgo.GetRFRatioOfEMaxLayer()","RFRatioOfEMaxLayer","",'F');
+   factory->AddVariable( "Bgo.GetLayerIDOfMaxRMS()","LayerIDOfMaxRMS","",'I');
 
    // You can add so-called "Spectator variables", which are not used in the MVA training,
    // but will appear in the final "TestTree" produced by TMVA. This TestTree will contain the

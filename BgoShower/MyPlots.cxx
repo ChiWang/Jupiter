@@ -44,6 +44,21 @@ namespace Conf
     }
     return chain;
   }
+  void PrintCanvasInfor()
+  {
+    int n=can.size();
+    for(int i=0;i<n;++i){
+      cout<<"i = "<<i<<"\t"<<can[i]->GetName()<<endl;
+    }
+  }
+  TCanvas *GetCanvas(int index)
+  {
+    return can.at(index);
+  }
+  void ActiveCanvas(int index)
+  {
+    can.at(index)->cd();
+  }
 
 };
 
@@ -93,7 +108,7 @@ void PrintInputFile()
   }
 }
 
-void MyDraw(TString exp, TCut cuts= Cuts::GlobalCut, TString opt="",bool newCanv=true)
+void MyDraw(TString exp, TCut cuts= Cuts::GlobalCut, TString opt="")
 {
   if(Conf::inputFileName.size() == 0){
     cout<<"\tWARNING:\t do not have any input files"<<endl;
@@ -101,7 +116,7 @@ void MyDraw(TString exp, TCut cuts= Cuts::GlobalCut, TString opt="",bool newCanv
     cout<<"\t\tPlot::AddInputFile(filename)\n"<<endl;
     return;
   }
-  if(newCanv){
+  if(!opt.Contains("same")){
     TString cName = "c";
             cName +=Conf::can.size();
             cName +="--"+exp;

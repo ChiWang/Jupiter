@@ -56,17 +56,19 @@ simAlg.Set("Gdml",DMPSW.WorkPath+"/share/Geometry/BTOctober2014/DAMPE_PS.gdml") 
 # Append user's service or algorithm into Kernel
 DMPSW.AlgMgr.Append(simAlg)
 
-DMPSW.Core.SetEventNumber(2000)     # MUST event number for simulation!!!
-simAlg.Set("gps/particle","pi-")   # default is mu-, 1MeV
+DMPSW.Core.SetEventNumber(50000)     # MUST event number for simulation!!!
+simAlg.Set("gps/particle","proton")   # default is mu-, 1MeV
 # e-
-simAlg.Set("gps/energy","20.0 GeV")
+# pi-
+# proton
+simAlg.Set("gps/energy","50 GeV")
 simAlg.Set("BT/DAMPE/Translation","-43 -68 0")  # uint: mm. default is "0 0 0"
 #  bar 25mm, carbon gap 1.5 mm, rubber 1.0 mm
 #   13.25       11
 #   43          12
 #   68.25       13
 #   93          14
-DMPSW.RootIOSvc.SetOutputFile("./Output/Sim_pion-20GeV_P43_68-Evts2000-sim.root")   # if NOT set, will use DmpSim_Seed-sim.root
+DMPSW.RootIOSvc.SetOutputFile("./Output/BTSimPS_proton-50GeV_P43_68-Evts50000-sim.root")   # if NOT set, will use DmpSim_Seed-sim.root
 #-------------------------------------------------------------------
 # Run job
 DMPSW.Core.Initialize()

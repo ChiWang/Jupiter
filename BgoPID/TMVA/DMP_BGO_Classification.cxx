@@ -390,7 +390,7 @@ void DMP_BGO_Classification(TString myMethodList = "",TString SFName = "./4GeV_e
    factory->AddVariable( "Bgo.fFValue[12]","F[12]","",'F');
    factory->AddVariable( "Bgo.fLRMS","LRMS","",'F');
    factory->AddVariable( "Bgo.GetFiredBarNumber()","FiredBarNumber","",'I');
-   //factory->AddVariable( "Bgo.GetEnergyRatioOfEMaxLayer()","EnergyRatioOfEMaxLayer","",'F');
+   factory->AddVariable( "Bgo.GetEnergyRatioOfEMaxLayer()","EnergyRatioOfEMaxLayer","",'F');
    factory->AddVariable( "Bgo.GetWindowEnergyRatio()","WindowEnergyRatio","",'F');
    factory->AddVariable( "Bgo.GetRMSOfEMaxLayer()","RMSOfEMaxLayer","",'F');
    factory->AddVariable( "Bgo.GetRFRatioOfEMaxLayer()","RFRatioOfEMaxLayer","",'F');

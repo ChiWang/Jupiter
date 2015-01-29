@@ -17,7 +17,8 @@ void RMSProfileCom(){
   gSystem->Load("$DMPSWWORK/lib/libMyplot.so");
 }
 
-Void CompareRMS(TCut cuts){ // cut energy range
+Void CompareRMS(TCut cuts)
+{ // cut energy range
   vector<TProfile*>     profi;
   int nFile = Plot::Conf::inputFileName.size();
   TLegend *leg = new TLegend(0.6,0.65,0.88,0.85);

@@ -129,7 +129,7 @@ void EnergyProfile(bool skipMips = true,TCut cuts=Cuts::GlobalCut)
       if(Conf::evt_bgo->GetFiredBarNumber() == 14 && Conf::evt_bgo->GetPileupRatio() == 0 && skipMips){
         continue;
       }
-      eMaxInL->Fill(Conf::evt_bgo->GetMaxEnergyLayerID(),Conf::evt_bgo->GetEnergyOfEMaxLayer());
+      eMaxInL->Fill(Conf::evt_bgo->GetLayerIDOfMaxE(),Conf::evt_bgo->GetEnergyOfEMaxLayer());
       for(int il=0;il<BGO_LayerNO;++il){
         eInL->Fill(il,Conf::evt_bgo->GetTotalEnergy(il));
       }
@@ -291,7 +291,7 @@ void Direction(TCut cuts=Cuts::GlobalCut)
 {
   gStyle->SetStatStyle();
   MyDraw("Bgo.GetTrackDirection().Theta()",cuts);
-  MyDraw("Bgo.GetTrackDirection().Theta():Bgo.GetMaxEnergyLayerID()",cuts,"*");
+  MyDraw("Bgo.GetTrackDirection().Theta():Bgo.GetLayerIDOfMaxE()",cuts,"*");
   MyDraw("Bgo.GetTrackDirection().Theta():Bgo.fTotE",cuts,"*");
 }
 

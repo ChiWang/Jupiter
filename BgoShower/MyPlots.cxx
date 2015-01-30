@@ -23,7 +23,7 @@
 namespace Plot
 {
 namespace Conf
-{ 
+{
   vector<TCanvas*>  can;
   vector<TString>   inputFileName;
 
@@ -64,7 +64,7 @@ namespace Conf
 
 namespace Cuts
 {
-  TCut GlobalCut = "Bgo.fTotE > 0";
+  TCut GlobalCut = "Bgo.fTotE > 5";
   TCut VerticalMips = "Bgo.GetFiredBarNumber() == 14 && Bgo.GetPileupRatio() == 0";
   TCut MipsWindow = "Bgo.fTotE > 200 && Bgo.fTotE <450 && Bgo.fLRMS > 3.5 && Bgo.fLRMS < 4.4 && Bgo.GetTotalRMS()>-2 && Bgo.GetTotalRMS()<2";
 };
@@ -76,6 +76,7 @@ void ResetInputFile(TString f)
   if(Conf::chain){
     delete Conf::chain;
   }
+  gStyle->SetOptStat("ouiRMe");
   Conf::chain = new TChain(__treeName);
   Conf::chain->AddFile(f);
   Conf::chain->SetBranchAddress("Bgo",&Conf::evt_bgo);
@@ -88,6 +89,7 @@ void AddInputFile(TString f)
   Conf::inputFileName.push_back(f);
   if(Conf::chain == 0){
     Conf::chain = new TChain(__treeName);
+   gStyle->SetOptStat("ouiRMe");
   }
   Conf::chain->AddFile(f);
   if(Conf::evt_bgo == 0) {
@@ -120,6 +122,10 @@ void MyDraw(TString exp, TCut cuts= Cuts::GlobalCut, TString opt="")
     TString cName = "c";
             cName +=Conf::can.size();
             cName +="--"+exp;
+            TString tmp = Conf::inputFileName[Conf::inputFileName.size()-1];
+            tmp.Remove(0,tmp.Last('/')+1);
+            tmp.Remove(tmp.First('.'),tmp.Length());
+            cName +="--"+tmp;
 
     Conf::can.push_back(new TCanvas(cName,cName));
     Conf::can[Conf::can.size()-1]->cd();
@@ -131,20 +137,18 @@ void MyDraw(TString exp, TCut cuts= Cuts::GlobalCut, TString opt="")
 // *
 // *  TODO:  how to use TCuts as TTree::Draw() ?? 
 // *
-void EnergyProfile(bool skipMips = true,TCut cuts=Cuts::GlobalCut)
+void EnergyProfile(bool skipMips = true,TCut cuts=Cuts::GlobalCut,TString opt="profg")
 {
     TString cName = "c";
           cName +=Conf::can.size();
           cName +="Energy_In_Layer";
 
-    TH2D *eMaxInL = new TH2D(cName+"MaxE","EMax In Layer",14,0,14,500,0,8000);
     TH2D *eInL = new TH2D(cName,"Energy In Layer",14,0,14,500,0,8000);
     for(int ievt=0;ievt<Conf::nEvts;++ievt){
       Conf::chain->GetEntry(ievt);
       if(Conf::evt_bgo->GetFiredBarNumber() == 14 && Conf::evt_bgo->GetPileupRatio() == 0 && skipMips){
         continue;
       }
-      eMaxInL->Fill(Conf::evt_bgo->GetLayerIDOfMaxE(),Conf::evt_bgo->GetEnergyOfEMaxLayer());
       for(int il=0;il<BGO_LayerNO;++il){
         eInL->Fill(il,Conf::evt_bgo->GetTotalEnergy(il));
       }
@@ -153,18 +157,7 @@ void EnergyProfile(bool skipMips = true,TCut cuts=Cuts::GlobalCut)
     Conf::can.push_back(new TCanvas(cName,cName));
     TCanvas *c = Conf::can[Conf::can.size()-1];
 
-    c->cd(2)->Divide(1,2,0,0);
-    c->cd(2);
-    gPad->SetGrid();
-    eMaxInL->SetMarkerStyle(6);
-    eMaxInL->Draw();
-    TProfile *eMaxInL_proX = eMaxInL->ProfileX();
-    eMaxInL_proX->SetMarkerStyle(30);
-    eMaxInL_proX->SetMarkerSize(2);
-    eMaxInL_proX->SetMarkerColor(2);
-    eMaxInL_proX->SetLineWidth(2);
-    eMaxInL_proX->SetLineColor(2);
-    eMaxInL_proX->Draw("esame");
+    c->cd(2)->Divide(1,3,0,0);
     c->cd(1);
     gPad->SetGrid();
     eInL->SetMarkerStyle(6);
@@ -176,6 +169,12 @@ void EnergyProfile(bool skipMips = true,TCut cuts=Cuts::GlobalCut)
     eInL_proX->SetLineWidth(2);
     eInL_proX->SetLineColor(2);
     eInL_proX->Draw("samee");
+    c->cd(2);
+    gPad->SetGrid();
+    Conf::LinkTree()->Draw("Bgo.GetEnergyOfEMaxLayer():Bgo.GetLayerIDOfMaxE()",cuts,opt);
+    c->cd(3);
+    gPad->SetGrid();
+    Conf::LinkTree()->Draw("Bgo.GetEnergyOfEMaxLayer()/Bgo.fTotE : Bgo.GetLayerIDOfMaxE()",cuts,opt);
 }
 
 //-------------------------------------------------------------------

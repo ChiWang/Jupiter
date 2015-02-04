@@ -12,6 +12,7 @@ Diction*
 plots
 weights
 *.root
+*.log
 
 # Precompiled Headers
 *.gch

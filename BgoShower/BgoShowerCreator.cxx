@@ -137,13 +137,13 @@ namespace Bgo{
           int min_dis = BGO_BarNO;
           int thisBID = barInThisLayer_sortByE[ib]->fBar;
           for(unsigned int ic=0;ic<clusterInThisLayer.size();++ic){  // find nearest cluster
-            int dis = thisBID - clusterInThisLayer[ic]->fSeedBarID; //????
-            if(abs(dis) < min_dis){
+            int dis = abs(thisBID - clusterInThisLayer[ic]->fSeedBarID); //????
+            if(dis < min_dis){
               clusterIndex = ic;
               min_dis = dis;
             }
           }
-          int refB_ID = thisBID + ((min_dis > 0) ? -1 : +1);   // the bar closest to bar_ic and near seed bar
+          int refB_ID = thisBID + ((thisBID > clusterInThisLayer[clusterIndex]->fSeedBarID) ? -1 : +1);   // the bar closest to bar_ic and near seed bar
           DmpBgoFiredBar *refB = 0;
           for(unsigned int ref_i=0;ref_i<barInThisLayer_sortByE.size();++ref_i){
             if(barInThisLayer_sortByE[ref_i]->fBar == refB_ID){
@@ -151,14 +151,10 @@ namespace Bgo{
               break;
             }
           }
-          bool aNewSeed = false;    // is a new cluster's seed
+          bool aNewSeed = true;    // assuming it's a new cluster's seed
           if(refB){
-            if((barInThisLayer_sortByE[ib]->fE - refB->fE) > 23){
-              aNewSeed = true;
-            }
-          }else{
-            if(barInThisLayer_sortByE[ib]->fE > 23){
-              aNewSeed = true;
+            if(barInThisLayer_sortByE[ib]->fE < refB->fE){
+              aNewSeed = false;
             }
           }
           if(aNewSeed){
@@ -200,14 +196,14 @@ namespace Bgo{
     return true;
   }
 
-  bool BgoShowerCreatorForMC(TString file_Rec0)
+  bool BgoShowerCreatorForMC(TString file_Rec0,double noise=0.8)
   {
     //TString inname = GetInputFileName(file_Rec0);
     TFile *input_f = TFile::Open(Conf::inputPath+file_Rec0,"update");
     if(input_f == 0){
       return false;
     }
-    TTree *tree_i = (TTree*)(input_f->Get("/Event/MCTruth"));
+    TTree *tree_i = (TTree*)(input_f->Get("/Event/Digit"));
     DmpEvtBgoHits *event_bgo = new DmpEvtBgoHits();
     tree_i->SetBranchAddress("Bgo",&event_bgo);
 
@@ -273,13 +269,13 @@ namespace Bgo{
           int min_dis = BGO_BarNO;
           int thisBID = barInThisLayer_sortByE[ib]->fBar;
           for(unsigned int ic=0;ic<clusterInThisLayer.size();++ic){  // find nearest cluster
-            int dis = thisBID - clusterInThisLayer[ic]->fSeedBarID; //????
-            if(abs(dis) < min_dis){
+            int dis = abs(thisBID - clusterInThisLayer[ic]->fSeedBarID); //????
+            if(dis < min_dis){
               clusterIndex = ic;
               min_dis = dis;
             }
           }
-          int refB_ID = thisBID + ((min_dis > 0) ? -1 : +1);   // the bar closest to bar_ic and near seed bar
+          int refB_ID = thisBID + ((thisBID > clusterInThisLayer[clusterIndex]->fSeedBarID) ? -1 : +1);   // the bar closest to bar_ic and near seed bar
           DmpBgoFiredBar *refB = 0;
           for(unsigned int ref_i=0;ref_i<barInThisLayer_sortByE.size();++ref_i){
             if(barInThisLayer_sortByE[ref_i]->fBar == refB_ID){
@@ -287,14 +283,10 @@ namespace Bgo{
               break;
             }
           }
-          bool aNewSeed = false;    // is a new cluster's seed
+          bool aNewSeed = true;    // assuming it's a new cluster's seed
           if(refB){
-            if((barInThisLayer_sortByE[ib]->fE - refB->fE) > 23){
-              aNewSeed = true;
-            }
-          }else{
-            if(barInThisLayer_sortByE[ib]->fE > 23){
-              aNewSeed = true;
+            if(barInThisLayer_sortByE[ib]->fE < refB->fE + noise){
+              aNewSeed = false;
             }
           }
           if(aNewSeed){

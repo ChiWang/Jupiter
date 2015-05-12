@@ -9,6 +9,8 @@ void Run()
     gSystem->Load("$DMPSWSYS/lib/libDmpBase.so");
     gSystem->Load("$DMPSWSYS/lib/libDmpEvent.so");
     gSystem->Load("$DMPSWWORK/lib/libDmpEvtBgoShower.so");
+    gSystem->Load("$DMPSWWORK/lib/libDmpEventRaw.so");
+    gSystem->Load("$DMPSWWORK/lib/libDmpEvtNudHits.so");
     gSystem->Load("$DMPSWWORK/lib/libDmpEvtSim.so");
     gInterpreter->AddIncludePath("$DMPSWSYS/include");
     gInterpreter->AddIncludePath("$DMPSWWORK/include");
@@ -26,6 +28,17 @@ void Run()
     gSystem->CompileMacro("./MyPlots.cxx","k",libName1);
   }else{
     gSystem->Load(libName1);
+  }
+
+  TString libName2 ="libMyPlot_MC";
+  if(gSystem->GetPathInfo(libName2,x)){
+    gSystem->Load("$DMPSWWORK/lib/libDmpEvtSim.so");
+    gSystem->Load("$DMPSWWORK/lib/libDmpEvtBgoShower.so");
+    //gInterpreter->AddIncludePath("$DMPSWSYS/include");
+    gInterpreter->AddIncludePath("$DMPSWWORK/include");
+    gSystem->CompileMacro("./MyPlots_MC.cxx","k",libName2);
+  }else{
+    gSystem->Load(libName2);
   }
 }
 
@@ -65,12 +78,13 @@ void TransforAll(TString filename = "input.list")
 
 //-------------------------------------------------------------------
 //-------------------------------------------------------------------
-void MyTestSim(TString fname = "DmpSim_electron_3GeV_P63.25_39_100-sim.root")
+void MyTestSim(TString fname = "DmpSim_electron_3GeV_P63.25_39_100-sim.root",double Resolution = 2.)
 {
-  DAMPE::Bgo::Conf::inputPath = "./SimData/";
+  DAMPE::Bgo::Conf::inputPath = "./testData/";
+  //DAMPE::Bgo::Conf::inputPath = "./SimData/";
   DAMPE::Bgo::Conf::inputTree = "/Event/MCTruth";
   //DAMPE::Bgo::Conf::MaxEvents = 2;
-  DAMPE::Bgo::BgoShowerCreatorForMC(fname);
+  DAMPE::Bgo::BgoShowerCreatorForMC(fname,Resolution);
   //DAMPE::Bgo::BgoShowerCreator("A2Data00_20141111_022025_Hits.root electron M300 P93_93_0");
 }
 

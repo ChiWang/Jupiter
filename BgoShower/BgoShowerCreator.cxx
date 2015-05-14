@@ -31,7 +31,7 @@ namespace Bgo{
   {
     TString  inputPath = "./Input/";
     TString  ouputPath = "./Output/";
-    TString  inputTree = "/Event/Cal";
+    //TString  inputTree = "/Event/Cal";
     long MaxEvents = 999999999;
   };
 
@@ -53,32 +53,48 @@ namespace Bgo{
     return hh+"_"+tag+out;
   }
 
-  bool BgoShowerCreator(TString file_Rec0)
+  bool BgoShowerCreator(TString file_Rec0, TString type="Data",double noise=2.5)//,TString bName="Hits")
   {
+          // MCTruth
     TString inname = GetInputFileName(file_Rec0);
     TFile *input_f = TFile::Open(Conf::inputPath+inname);
     if(input_f == 0){
       return false;
     }
-    TTree *tree_i = (TTree*)(input_f->Get(Conf::inputTree));
+    TString inputTree = "/Event/Cal";
+    TString bName = "Hits";
+    if(type =="Data"){
+      inputTree = "/Event/Cal";
+      bName = "Hits";
+    }else if(type == "MC"){
+      inputTree = "/Event/MCTruth";
+      bName = "BgoFDigit";
+    }else if(type == "MCTruth"){
+      inputTree = "/Event/MCTruth";
+      bName = "Bgo";
+    }
+    TTree *tree_i = (TTree*)(input_f->Get(inputTree));
     DmpEvtBgoHits *event_bgo = new DmpEvtBgoHits();
-    tree_i->SetBranchAddress("Hits",&event_bgo);
-    DmpEvtHeader *event_Header = new DmpEvtHeader();
-    tree_i->SetBranchAddress("EventHeader",&event_Header);
+    tree_i->SetBranchAddress(bName,&event_bgo);
 
     long et = tree_i->GetEntries();
     et =  (et>Conf::MaxEvents)?Conf::MaxEvents:et;
-    TString outName = GetOutFileName(file_Rec0,"BS");
+    TString outName = GetOutFileName(file_Rec0,type);
     outName.Remove(outName.Last('_'));
     outName += "-Evts";
     outName += et;
     TFile *output_f = new TFile(Conf::ouputPath+outName+".root","RECREATE");
     output_f->mkdir("Event");
     TTree *tree_o = new TTree("Rec0","Rec0");
-    DmpEvtHeader *evt_Header = new DmpEvtHeader();
-    tree_o->Branch("EventHeader",evt_Header->GetName(),&evt_Header);
     DmpEvtBgoShower *evt_BgoShower = new DmpEvtBgoShower(); 
     tree_o->Branch("Bgo",evt_BgoShower->GetName(),&evt_BgoShower);
+
+    DmpEvtHeader *event_Header = new DmpEvtHeader();
+    DmpEvtHeader *evt_Header = new DmpEvtHeader();
+    if(type == "Data"){
+      tree_i->SetBranchAddress("EventHeader",&event_Header);
+      tree_o->Branch("EventHeader",evt_Header->GetName(),&evt_Header);
+    }
 
     cout<<"\nProcessing "<<input_f->GetName()<<"\t ===> "<<output_f->GetName()<<std::endl;
     //clock_t s0=clock();
@@ -153,7 +169,7 @@ namespace Bgo{
           }
           bool aNewSeed = true;    // assuming it's a new cluster's seed
           if(refB){
-            if(barInThisLayer_sortByE[ib]->fE < refB->fE){
+            if(barInThisLayer_sortByE[ib]->fE < refB->fE + noise){
               aNewSeed = false;
             }
           }
@@ -188,24 +204,25 @@ namespace Bgo{
     //clock_t se=clock();
     //std::cout<<"T end = DEBUG: "<<__FILE__<<"("<<__LINE__<<")\t\t"<<se<<std::endl;
     delete event_Header;
+    delete evt_Header;
     delete event_bgo;
     delete evt_BgoShower;
-    delete evt_Header;
     delete input_f;
     delete output_f;
     return true;
   }
 
-  bool BgoShowerCreatorForMC(TString file_Rec0,double noise=0.8)
+  /*
+  bool BgoShowerCreatorForMC(TString file_Rec0,double noise=0.8,TString bName="BgoFDigit")
   {
     //TString inname = GetInputFileName(file_Rec0);
     TFile *input_f = TFile::Open(Conf::inputPath+file_Rec0,"update");
     if(input_f == 0){
       return false;
     }
-    TTree *tree_i = (TTree*)(input_f->Get("/Event/Digit"));
+    TTree *tree_i = (TTree*)(input_f->Get("/Event/MCTruth"));
     DmpEvtBgoHits *event_bgo = new DmpEvtBgoHits();
-    tree_i->SetBranchAddress("Bgo",&event_bgo);
+    tree_i->SetBranchAddress(bName,&event_bgo);
 
     long et = tree_i->GetEntries();
     et =  (et>Conf::MaxEvents)?Conf::MaxEvents:et;
@@ -323,6 +340,7 @@ namespace Bgo{
     delete input_f;
     return true;
   }
+  */
 
 };
 };

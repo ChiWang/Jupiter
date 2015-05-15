@@ -223,9 +223,12 @@ bool BookMethod(TMVA::Factory *fac,TString methodList)
    if (Use["HMatrix"])
       fac->BookMethod( TMVA::Types::kHMatrix, "HMatrix", "!H:!V:VarTransform=None" );
 
+std::cout<<"\n\nDEBUG: "<<__FILE__<<"("<<__LINE__<<")"<<std::endl;
    // Linear discriminant (same as Fisher discriminant)
    if (Use["LD"])
       fac->BookMethod( TMVA::Types::kLD, "LD", "H:!V:VarTransform=None:CreateMVAPdfs:PDFInterpolMVAPdf=Spline2:NbinsMVAPdf=50:NsmoothMVAPdf=10" );
+
+std::cout<<"\n\nDEBUG: "<<__FILE__<<"("<<__LINE__<<")"<<std::endl;
 
    // Fisher discriminant (same as LD)
    if (Use["Fisher"])
@@ -393,7 +396,7 @@ void DMP_BGO_Classification(TString myMethodList = "",TString SFName = "./4GeV_e
    factory->AddVariable( "Bgo.GetEnergyRatioOfEMaxLayer()","EnergyRatioOfEMaxLayer","",'F');
    factory->AddVariable( "Bgo.GetWindowEnergyRatio()","WindowEnergyRatio","",'F');
    factory->AddVariable( "Bgo.GetRMSOfEMaxLayer()","RMSOfEMaxLayer","",'F');
-   factory->AddVariable( "Bgo.GetRFRatioOfEMaxLayer()","RFRatioOfEMaxLayer","",'F');
+   //factory->AddVariable( "Bgo.GetRFRatioOfEMaxLayer()","RFRatioOfEMaxLayer","",'F');
    factory->AddVariable( "Bgo.GetLayerIDOfMaxRMS()","LayerIDOfMaxRMS","",'I');
 
    // You can add so-called "Spectator variables", which are not used in the MVA training,
@@ -402,7 +405,7 @@ void DMP_BGO_Classification(TString myMethodList = "",TString SFName = "./4GeV_e
    factory->AddSpectator( "Bgo.GetEntryPoint().x()","EntryPointX","mm",'F' );
    factory->AddSpectator( "Bgo.GetEntryPoint().y()","EntryPointY","mm",'F' );
    factory->AddSpectator( "Bgo.GetTrackDirection().Theta()","TrackTheta","",'F');
-   factory->AddSpectator( "Bgo.GetMaxEnergyLayerID()","MaxEnergyLayer","",'I');
+   //factory->AddSpectator( "Bgo.GetMaxEnergyLayerID()","MaxEnergyLayer","",'I');
    factory->AddSpectator( "Bgo.fTotE","RecoEnergy","MeV",'F' );
    
    // global event weights per tree (see below for setting event-wise weights)
@@ -484,6 +487,7 @@ void DMP_BGO_Classification(TString myMethodList = "",TString SFName = "./4GeV_e
    TCut mycuts = "Bgo.fTotE > 200 && Bgo.fTotE <450 && Bgo.fLRMS > 3.6 && Bgo.fLRMS < 4.4 && Bgo.GetTotalRMS()>-2 && Bgo.GetTotalRMS()<2";
    TCut mycutb = "Bgo.fTotE > 0"; // for example: TCut mycutb = "abs(var1)<0.5";
    TCut mycutc = "Bgo.fTotE >3400 && Bgo.fTotE < 4000"; // for example: TCut mycutb = "abs(var1)<0.5";
+   TCut passTrig = "Bgo.Group3_0000(0.2)";
 
    // Tell the factory how to use the training and testing events
    //
@@ -499,6 +503,7 @@ void DMP_BGO_Classification(TString myMethodList = "",TString SFName = "./4GeV_e
    //-------------------------------------------------------------------
    // Book Methods. Must after all setting
    if( ! BookMethod(factory,myMethodList) ) return;
+
 
    // For an example of the category classifier usage, see: TMVAClassificationCategory
    // --------------------------------------------------------------------------------------------------

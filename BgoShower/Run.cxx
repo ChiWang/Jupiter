@@ -78,21 +78,21 @@ void TransforAll(TString filename = "input.list")
 
 //-------------------------------------------------------------------
 //-------------------------------------------------------------------
-void MyTestSim(TString fname = "DmpSim_electron_3GeV_P63.25_39_100-sim.root",double Resolution = 2.)
+void MyTestSim(TString fname = "BTSimSPS_proton-400GeV_P43_68-Evts200-sim.root",double Resolution = 2.)
 {
-  DAMPE::Bgo::Conf::inputPath = "./testData/";
+  DAMPE::Bgo::Conf::inputPath = "./SimData/root/";
   //DAMPE::Bgo::Conf::inputPath = "./SimData/";
-  DAMPE::Bgo::Conf::inputTree = "/Event/MCTruth";
+  //DAMPE::Bgo::Conf::inputTree = "/Event/MCTruth";
   //DAMPE::Bgo::Conf::MaxEvents = 2;
-  DAMPE::Bgo::BgoShowerCreatorForMC(fname,Resolution);
+  DAMPE::Bgo::BgoShowerCreator(fname,"MC");
   //DAMPE::Bgo::BgoShowerCreator("A2Data00_20141111_022025_Hits.root electron M300 P93_93_0");
 }
 
 void TransforAllSim(TString filename = "input.list")
 {
-  DAMPE::Bgo::Conf::inputPath = "./SimData/";
-  DAMPE::Bgo::Conf::inputTree = "/Event/MCTruth";
-  ifstream in_log("./SimData/"+filename);
+  DAMPE::Bgo::Conf::inputPath = "./SimData/root/";
+  //DAMPE::Bgo::Conf::inputTree = "/Event/MCTruth";
+  ifstream in_log("./SimData/root/"+filename);
   char tmp[256];
   bool beg = false;
   //DAMPE::Bgo::Conf::ouputPath = "./Output/";
@@ -109,7 +109,7 @@ void TransforAllSim(TString filename = "input.list")
       continue;
     }else{
       if(beg && aLine.Contains("root")){
-        DAMPE::Bgo::BgoShowerCreatorForMC(aLine);
+        DAMPE::Bgo::BgoShowerCreator(aLine,"MC");
       }
     }
   }

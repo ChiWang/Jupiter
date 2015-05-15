@@ -14,7 +14,7 @@
  */
 
 void RMSProfileCom(){
-  gSystem->Load("$DMPSWWORK/lib/libMyplot.so");
+  gSystem->Load("$DMPSWWORK/lib/libMyPlot.so");
 }
 
 Void CompareRMS(TCut cuts)

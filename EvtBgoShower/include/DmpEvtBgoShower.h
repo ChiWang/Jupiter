@@ -49,9 +49,11 @@ public:
   void LoadFrom(const DmpEvtBgoCluster *&r);
   int GetClusterSize()const;   // how many fired bar
   DmpBgoFiredBar *GetSeedBar()const;
-  double GetWindowEnergy(int n=3)const;  // n bars around seed bar
+  double GetWindowEnergy(int n=2)const;  // n bars around seed bar
+  double GetERatioOfSeedBar(int nBar2Seed=2)const;  // n bars around seed bar
   double GetCoGBarID()const;
   double GetTotalEnergy(int whichSide=-1)const;  // whichside = {-1,0,1}= {combined | side_0 | side_1}
+  int GetFiredBarNumber(double eCutLow=2.5)const;
 
   void AddNewFiredBar(DmpBgoFiredBar *aBar);
   void MyPrint()const;
@@ -82,7 +84,7 @@ public:
   double GetTotalEnergy(int layerID = -1, int whichSide=-1)const;   // layer ID == -1, total energy of all layers.  whichside = {-1,0,1}= {combined | side_0 | side_1}
   double GetTotalRMS()const;
   double GetPileupRatio()const;     // (-1,0): some layer not fired. 0: one track. > 1: multi-track
-  int GetFiredBarNumber(int layerID = -1)const;
+  int GetFiredBarNumber(int layerID = -1,double eCutLow=2.5)const;
 
   double GetEnergyOfBar(int layerID, int barID)const;
   double GetCoGBarIDInLayer(int layerID)const;
@@ -91,15 +93,22 @@ public:
   double GetGValue(int layerID)const; // define G = RMS^2 * E_total / E_layer
 
   double GetEnergyOfEMaxLayer()const;
+  double GetEnergyOfEMinLayer()const;
   double GetEnergyRatioOfEMaxLayer()const;
-  double GetWindowEnergy(int nBars=3,int nHalf=1)const;  //nHalf: include how may layers above(below) seed layer. Totally: 2*nHalf + 1 layers
+  double GetEnergyRatioOfEMinLayer()const;
+  double GetFractalOfMaxMinLayer()const;
+  double GetEnergyRatioOfLayer(int layerID)const;
+  double GetWindowEnergy(int nBars=2,int nHalf=1)const;  //nHalf: include how may layers above(below) seed layer. Totally: 2*nHalf + 1 layers
   double GetWindowEnergyRatio(int nBars=3,int nHalf = 1)const;
   double GetRMSOfEMaxLayer()const;
   double GetGValueOfEMaxLayer()const;
   int GetLayerIDOfMaxE()const;
+  int GetLayerIDOfMinE()const;
   int GetLayerIDOfMaxFiredBarNo()const;
   int GetLayerIDOfMaxGValue()const;
   int GetLayerIDOfMinGValue()const;
+  int GetLayerIDOfMaxFValue()const;
+  int GetLayerIDOfMinFValue()const;
   int GetLayerIDOfMaxRMS()const;
   int GetLayerIDOfMinRMS()const;    // exclude un-fired layers
   double GetMaxRMS()const;
@@ -109,8 +118,15 @@ public:
   double GetMyValue(int nHalfLayer = 2)const;
 
   std::vector<DmpEvtBgoCluster*> GetAllClusterInLayer(int layerID)const;
+  int GetClusterNoInLayer(int lID,double seedECut_low=23, double seedECut_h = 9999999)const;
   DmpEvtBgoCluster *GetMaxClusterInLayer(int layerID)const;
+  double GetFractal(int layerID, int nBars1,int nBars2)const;
+  double GetFractalOfEMaxLayer(int nBars1,int nBars2)const;
+  double GetFractalOfGMaxLayer(int nBars1,int nBars2)const;
+  double GetFractalOfFMaxLayer(int nBars1,int nBars2)const;
+  double GetFractalOfRMSMaxLayer(int nBars1,int nBars2)const;
   DmpBgoFiredBar*   GetEMaxBar()const;
+  DmpBgoFiredBar*   GetEMaxBarInLayer(int layerID)const;
   std::vector<DmpBgoFiredBar*>  GetIsolatedBar(int layerID,double noise=2)const;  // if nextBar.fE < noise, the current bar is isolated
   std::vector<DmpBgoFiredBar*>  GetIsolatedBar(int layerID,double eLow,double eHigh,double noise=2)const;  // if nextBar.fE < noise, the current bar is isolated, only return isolated bar whose energy > eLow and < eHigh
   std::vector<DmpBgoFiredBar*>  GetIsolatedBarFromLayer(int layerID,double noise=2)const; // isolated bar from layerID ~ 13

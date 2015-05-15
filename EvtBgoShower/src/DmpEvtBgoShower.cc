@@ -157,11 +157,16 @@ double DmpEvtBgoCluster::GetWindowEnergy(int len)const
   int n = fFiredBar->GetEntriesFast();
   for(int i=0;i<n;++i){
     DmpBgoFiredBar *aB = dynamic_cast<DmpBgoFiredBar*>(fFiredBar->At(i));
-    if(TMath::Abs(aB->fBar - fSeedBarID)<len){
+    if(TMath::Abs(aB->fBar - fSeedBarID) <= len){
       e += aB->fE;
     }
   }
   return e;
+}
+
+double DmpEvtBgoCluster::GetERatioOfSeedBar(int len)const
+{
+  return this->GetSeedBar()->fE / this->GetWindowEnergy(len);
 }
 
 //-------------------------------------------------------------------
@@ -191,6 +196,15 @@ double DmpEvtBgoCluster::GetTotalEnergy(int whichSide)const
     }
   }
   return e;
+}
+
+int DmpEvtBgoCluster::GetFiredBarNumber(double e_low)const
+{
+  int n=0;
+  for(int i=0;i<fFiredBar->GetEntriesFast();++i){
+    if((dynamic_cast<DmpBgoFiredBar*>(fFiredBar->At(i)))->fE > e_low) ++n;
+  }
+  return n;
 }
 
 void DmpEvtBgoCluster::AddNewFiredBar(DmpBgoFiredBar *ab)
@@ -324,10 +338,29 @@ int DmpEvtBgoShower::GetLayerIDOfMaxE()const
   return id;
 }
 
+int DmpEvtBgoShower::GetLayerIDOfMinE()const
+{
+  double min_e = 99999999;
+  int id = -1;
+  for(int i=0;i<BGO_LayerNO;++i){
+    double ei = this->GetTotalEnergy(i);
+    if(ei < min_e && ei > 23){
+      min_e = ei;
+      id = i;
+    }
+  }
+  return id;
+}
+
 //-------------------------------------------------------------------
 double DmpEvtBgoShower::GetEnergyOfEMaxLayer()const
 {
   return this->GetTotalEnergy(this->GetLayerIDOfMaxE());
+}
+
+double DmpEvtBgoShower::GetEnergyOfEMinLayer()const
+{
+  return this->GetTotalEnergy(this->GetLayerIDOfMinE());
 }
 
 //-------------------------------------------------------------------
@@ -335,6 +368,23 @@ double DmpEvtBgoShower::GetEnergyRatioOfEMaxLayer()const
 {
   return this->GetEnergyOfEMaxLayer() / fTotE;
 }
+
+double DmpEvtBgoShower::GetEnergyRatioOfEMinLayer()const
+{
+  return this->GetEnergyOfEMinLayer() / fTotE;
+}
+
+double DmpEvtBgoShower::GetFractalOfMaxMinLayer()const//LayerIDOfMaxMinLayer()const
+{
+  return TMath::Log10(this->GetEnergyRatioOfEMaxLayer()) / TMath::Log10(this->GetEnergyRatioOfEMinLayer());
+}
+
+//-------------------------------------------------------------------
+double DmpEvtBgoShower::GetEnergyRatioOfLayer(int l)const
+{
+  return this->GetTotalEnergy(l) / fTotE;
+}
+
 
 //-------------------------------------------------------------------
 DmpEvtBgoCluster* DmpEvtBgoShower::GetMaxClusterInLayer(int l)const
@@ -375,14 +425,14 @@ double DmpEvtBgoShower::GetWindowEnergyRatio(int nBars,int nHalf)const
   return this->GetWindowEnergy(nBars,nHalf) / fTotE;
 }
 
-int DmpEvtBgoShower::GetFiredBarNumber(int layerID)const
+int DmpEvtBgoShower::GetFiredBarNumber(int layerID,double e_low)const
 {
   int b = 0;
   int nClus = fClusters->GetEntriesFast();
   for(int l=0;l<nClus;++l){
     DmpEvtBgoCluster *aC = dynamic_cast<DmpEvtBgoCluster*>(fClusters->At(l));
     if(layerID == aC->fLayer || layerID == -1){
-      b += aC->fFiredBar->GetEntriesFast();
+      b += aC->GetFiredBarNumber(e_low);
     }
   }
   return b;
@@ -635,8 +685,10 @@ void DmpEvtBgoShower::Calculation()
   TH2D yz_posi("yz","yz",550,50,600,800,-400,400);
   static TF1  p1("myf","pol1");
   for(int i=0;i<BGO_LayerNO;++i){
+    if(this->GetEnergyRatioOfLayer(i) < fTotE * 0.20) continue;
     DmpEvtBgoCluster *aC = this->GetMaxClusterInLayer(i);
     if(aC){
+      if(aC->GetERatioOfSeedBar(1) < 0.4) continue;
       if(i%2 == 0){
         yz_posi.Fill(aC->fCenter.z(),aC->fCenter.y(),aC->fTotE);
       }else{
@@ -714,6 +766,32 @@ int DmpEvtBgoShower::GetLayerIDOfMaxGValue()const
     }
   }
   return id;
+}
+
+int DmpEvtBgoShower::GetLayerIDOfMaxFValue()const
+{
+  double f=fFValue[0];
+  int l=0;
+  for(int i=1;i<BGO_LayerNO;++i){
+    if(f < fFValue[i]){
+      f=fFValue[i];
+      l = i;
+    }
+  }
+  return l;
+}
+
+int DmpEvtBgoShower::GetLayerIDOfMinFValue()const
+{
+  double f=fFValue[0];
+  int l=0;
+  for(int i=1;i<BGO_LayerNO;++i){
+    if(f > fFValue[i]){
+      f=fFValue[i];
+      l = i;
+    }
+  }
+  return l;
 }
 
 //-------------------------------------------------------------------
@@ -1096,6 +1174,64 @@ bool DmpEvtBgoShower::Group4_111(double threshold)const
     return true;
   }
   return false;
+}
+
+DmpBgoFiredBar* DmpEvtBgoShower::GetEMaxBarInLayer(int l)const
+{
+  std::vector<DmpEvtBgoCluster*>  cluInL = this->GetAllClusterInLayer(l);
+  DmpBgoFiredBar *add=cluInL[0]->GetSeedBar();
+  for(int i=1;i<cluInL.size();++i){
+    DmpBgoFiredBar *tmp=cluInL[i]->GetSeedBar();
+    if(add->fE < tmp->fE){
+      add = tmp;
+    }
+  }
+  return add;
+}
+
+int DmpEvtBgoShower::GetClusterNoInLayer(int l,double eCut,double eh)const
+{
+  std::vector<DmpEvtBgoCluster*>  cluInL = this->GetAllClusterInLayer(l);
+  int n=0;
+  for(int i=0;i<cluInL.size();++i){
+    DmpBgoFiredBar *tmp = cluInL[i]->GetSeedBar();
+    if(tmp->fE > eCut && tmp->fE < eh) ++n;
+  }
+  return n;
+}
+
+double DmpEvtBgoShower::GetFractal(int l,int b1,int b2)const
+{
+  double f=0;
+  DmpEvtBgoCluster *ac = GetMaxClusterInLayer(l);
+  if(ac){
+    f = TMath::Log10(ac->GetERatioOfSeedBar(b2)) / TMath::Log10(ac->GetERatioOfSeedBar(b1));
+  }
+  return f;
+}
+
+double DmpEvtBgoShower::GetFractalOfEMaxLayer(int b1,int b2)const
+{
+  int l=this->GetLayerIDOfMaxE();
+  return this->GetFractal(l,b1,b2);
+}
+
+double DmpEvtBgoShower::GetFractalOfGMaxLayer(int b1,int b2)const
+{
+  int l=this->GetLayerIDOfMaxGValue();
+  return this->GetFractal(l,b1,b2);
+}
+
+double DmpEvtBgoShower::GetFractalOfFMaxLayer(int b1,int b2)const
+{
+  int l=this->GetLayerIDOfMaxFValue();
+  return this->GetFractal(l,b1,b2);
+}
+
+double DmpEvtBgoShower::GetFractalOfRMSMaxLayer(int b1,int b2)const
+{
+  int l = this->GetLayerIDOfMaxRMS();
+  return this->GetFractal(l,b1,b2);
 }
 
 /*

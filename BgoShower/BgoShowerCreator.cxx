@@ -106,6 +106,7 @@ namespace Bgo{
       std::map<int,std::vector<DmpBgoFiredBar*> > firedBar; // key: layer ID
       short nBar = event_bgo->fGlobalBarID.size();
       for(short ib =0;ib<nBar;++ib){
+        if(event_bgo->fEnergy[ib] < noise) continue;
         short gid = event_bgo->fGlobalBarID[ib];
         int lid = DmpBgoBase::GetLayerID(gid);
         int bid =DmpBgoBase::GetBarID(gid);

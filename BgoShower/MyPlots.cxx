@@ -94,7 +94,10 @@ namespace Steer
 namespace Cuts
 {
   TCut GlobalCut = "Bgo.T0()";
-  TCut VerticalMips = "Bgo.GetFiredBarNumber() == 14 && Bgo.GetPileupRatio() == 0";
+  TCut VerticalMips = "Bgo.GetFiredBarNumber() < 16 && Bgo.ClusterNo(10) < 16";
+  bool IsVerticalMips(){
+    return (Conf::evt_bgo->GetFiredBarNumber() < 16 && Conf::evt_bgo->GetClusterNo(10) <16);
+  }
   TCut MipsWindow = "Bgo.fTotE > 200 && Bgo.fTotE <450 && Bgo.fLRMS > 3.5 && Bgo.fLRMS < 4.4 && Bgo.GetTotalRMS()>-2 && Bgo.GetTotalRMS()<2";
   TCut Trig3_0000 = "Bgo.Group3_0000(0.2)";
 };
@@ -180,7 +183,7 @@ void LongitudinalProfile(bool skipMips = true,TCut cuts=Cuts::GlobalCut,TString 
     TH2D *eInL = new TH2D(cName,"E_layer / E_total",14,0,14,5000,0,0.5);
     for(int ievt=0;ievt<Conf::nEvts;++ievt){
       Conf::chain->GetEntry(ievt);
-      if(Conf::evt_bgo->GetFiredBarNumber() == 14 && Conf::evt_bgo->GetPileupRatio() == 0 && skipMips){
+      if(Cuts::IsVerticalMips() && skipMips){
         continue;
       }
       for(int il=0;il<BGO_LayerNO;++il){
@@ -277,7 +280,7 @@ TProfile *RMSFValueProfile(bool skipMips = true)
     TH2D *GInL = new TH2D(cName+"GValue","GValue_layer / G_max",14,0,14,11000,0,1.1);
     for(int ievt=0;ievt<Conf::nEvts;++ievt){
       Conf::chain->GetEntry(ievt);
-      if(Conf::evt_bgo->GetFiredBarNumber() == 14 && Conf::evt_bgo->GetPileupRatio() == 0 && skipMips){
+      if(Cuts::IsVerticalMips() && skipMips){
         continue;
       }
       double MaxRMS = Conf::evt_bgo->GetMaxRMS();
@@ -910,7 +913,7 @@ void IsolatedBar(double eRangeLo=5, double eRangeHi = 10000, int layerCut = 4,do
             // Mips cut
       continue; 
     }
-    if(Conf::evt_bgo->GetFiredBarNumber() == 14 && Conf::evt_bgo->GetPileupRatio() == 0){
+    if(Cuts::IsVerticalMips()){
       continue;
     }
 

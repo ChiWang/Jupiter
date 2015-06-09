@@ -127,12 +127,6 @@ void DmpEvtBgoCluster::LoadFrom(const DmpEvtBgoCluster *&r)
 }
 
 //-------------------------------------------------------------------
-int DmpEvtBgoCluster::GetClusterSize()const
-{
-  return fFiredBar->GetEntriesFast();
-}
-
-//-------------------------------------------------------------------
 DmpBgoFiredBar *DmpEvtBgoCluster::GetSeedBar()const
 {
   DmpBgoFiredBar *seedBar = 0;
@@ -164,14 +158,19 @@ double DmpEvtBgoCluster::GetWindowEnergy(int len)const
   return e;
 }
 
-double DmpEvtBgoCluster::GetERatioOfSeedBar(int len)const
+double DmpEvtBgoCluster::GetERatioOfSeedBar()const
 {
-  return this->GetSeedBar()->fE / this->GetWindowEnergy(len);
+  return this->GetSeedBar()->fE / fTotE;
+}
+
+double DmpEvtBgoCluster::GetS1ToSn(int n)const
+{
+  return this->GetSeedBar()->fE / this->GetWindowEnergy(n);
 }
 
 double DmpEvtBgoCluster::GetFractal(int nb1,int nb2)const
 {
-  return TMath::Log10(this->GetERatioOfSeedBar(nb1)) / TMath::Log10(this->GetERatioOfSeedBar(nb2));
+  return TMath::Log10(this->GetS1ToSn(nb1)) / TMath::Log10(this->GetS1ToSn(nb2));
 }
 
 //-------------------------------------------------------------------
@@ -203,7 +202,7 @@ double DmpEvtBgoCluster::GetTotalEnergy(int whichSide)const
   return e;
 }
 
-int DmpEvtBgoCluster::GetFiredBarNumber(double e_low)const
+int DmpEvtBgoCluster::GetBarNumber(double e_low)const
 {
   int n=0;
   for(int i=0;i<fFiredBar->GetEntriesFast();++i){
@@ -222,6 +221,11 @@ double DmpEvtBgoCluster::GetRMS()const
     rms2_Xt += ab->fE * pow(cen - ab->fBar,2);
   }
   return sqrt(rms2_Xt / fTotE);
+}
+
+double DmpEvtBgoCluster::GetSeedRatio2Size()const
+{
+  return this->GetERatioOfSeedBar() / this->GetBarNumber();
 }
 
 void DmpEvtBgoCluster::AddNewFiredBar(DmpBgoFiredBar *ab)
@@ -299,23 +303,42 @@ void DmpEvtBgoShower::LoadFrom(const DmpEvtBgoShower *&r)
 }
 
 //-------------------------------------------------------------------
-DmpEvtBgoCluster* DmpEvtBgoShower::GetSeedCluster()const
+DmpEvtBgoCluster* DmpEvtBgoShower::GetEMaxCluster()const
 {
-  DmpEvtBgoCluster *seedClu =0;
-  double max_e = 0;
+  DmpEvtBgoCluster *ac =0;
+  double e = 0;
   for(int i=0;i<fClusters->GetEntriesFast();++i){
-    DmpEvtBgoCluster *aC = dynamic_cast<DmpEvtBgoCluster*>(fClusters->At(i));
-    if(aC->fTotE > max_e){
-      seedClu = aC;
-      max_e = aC->fTotE;
+    DmpEvtBgoCluster *tmp = dynamic_cast<DmpEvtBgoCluster*>(fClusters->At(i));
+    if(e < tmp->fTotE){
+      ac = tmp;
+      e = tmp->fTotE;
     }
   }
-  return seedClu;
+  return ac;
+}
+
+DmpEvtBgoCluster* DmpEvtBgoShower::GetEMaxClusterInEMaxLayer()const
+{
+  int lid=this->GetLayerIDOfMaxE();
+  return this->GetEMaxClusterInLayer(lid);
+}
+
+DmpEvtBgoCluster* DmpEvtBgoShower::GetEMaxClusterInCoGLayer()const
+{
+  int lid=this->GetLayerIDOfCoG();
+  return this->GetEMaxClusterInLayer(lid);
+}
+
+DmpEvtBgoCluster* DmpEvtBgoShower::GetEMaxClusterInGMinLayer()const
+{
+  int lid=this->GetLayerIDOfMinGValue();
+  return this->GetEMaxClusterInLayer(lid);
 }
 
 //-------------------------------------------------------------------
 double DmpEvtBgoShower::GetTotalEnergy(int layerid, int whichSide)const
 {
+  if(layerid < 0 && fTotE > 0) return fTotE;
   double e = 0.;
   for(int i=0;i<fClusters->GetEntriesFast();++i){
     DmpEvtBgoCluster *aC = dynamic_cast<DmpEvtBgoCluster*>(fClusters->At(i));
@@ -328,6 +351,7 @@ double DmpEvtBgoShower::GetTotalEnergy(int layerid, int whichSide)const
 
 double DmpEvtBgoShower::GetEnergyOfBar(int l,int barID)const
 {
+  if(l<0 || l>13 || barID <0 || barID > 21) return 0;
   std::vector<DmpEvtBgoCluster*>  cluInL = this->GetAllClusterInLayer(l);
   for(int i=0;i<cluInL.size();++i){
     for(int b=0;b<cluInL[i]->fFiredBar->GetEntriesFast();++b){
@@ -337,19 +361,26 @@ double DmpEvtBgoShower::GetEnergyOfBar(int l,int barID)const
       }
     }
   }
-  return -99;
+  return 0;
 }
 
 //-------------------------------------------------------------------
-int DmpEvtBgoShower::GetLayerIDOfMaxE()const
+int DmpEvtBgoShower::GetLayerIDOfMaxE(int from,bool checkMe)const
 {
   double max_e = 0.;
   int id = -1;
-  for(int i=0;i<BGO_LayerNO;++i){
+  for(int i=from;i<BGO_LayerNO;++i){
     double ei = this->GetTotalEnergy(i);
     if(ei > max_e){
       max_e = ei;
       id = i;
+    }
+  }
+  if(id <= 11 && checkMe){
+    double nextE = this->GetTotalEnergy(id+1);
+    double next2E = this->GetTotalEnergy(id+2);
+    if(nextE < next2E){
+      id = this->GetLayerIDOfMaxE(id+1);
     }
   }
   return id;
@@ -381,25 +412,39 @@ double DmpEvtBgoShower::GetEnergyOfEMinLayer()const
 }
 
 //-------------------------------------------------------------------
-double DmpEvtBgoShower::GetEnergyRatioOfEMaxLayer()const
+double DmpEvtBgoShower::GetERatioOfEMaxLayer()const
 {
   return this->GetEnergyOfEMaxLayer() / fTotE;
 }
 
-double DmpEvtBgoShower::GetEnergyRatioOfEMinLayer()const
+double DmpEvtBgoShower::GetERatioOfCoGZ()const
+{
+  int l = this->GetLayerIDOfCoG();
+  return this->GetERatioOfLayer(l);
+}
+
+double DmpEvtBgoShower::GetERatioOfEMinLayer()const
 {
   return this->GetEnergyOfEMinLayer() / fTotE;
 }
 
-double DmpEvtBgoShower::GetEnergyRatioOfEMaxClusterInLayer(int l)const
+double DmpEvtBgoShower::GetERatioOfEMaxClusterInLayer(int l)const
 {
-  std::vector<double>  v = this->GetClusterERatioInLayer(l);
+  std::vector<double>  v = this->GetERatioOfClustersInLayer(l);
   return v.at(0);
 }
 
-double DmpEvtBgoShower::GetEnergyRatioOfEMinClusterInLayer(int l)const
+double DmpEvtBgoShower::GetERatioOfEMaxClusterInCoG()const
 {
-  DmpEvtBgoCluster *ac = this->GetMaxClusterInLayer(l);
+  int l = this->GetLayerIDOfCoG();
+  std::vector<double>  v = this->GetERatioOfClustersInLayer(l);
+  if(v.size() ==0) return 0;
+  return v.at(0);
+}
+
+double DmpEvtBgoShower::GetERatioOfEMinClusterInLayer(int l)const
+{
+  DmpEvtBgoCluster *ac = this->GetEMinClusterInLayer(l);
   double v=0;
   if(ac){
     v = ac->fTotE / this->GetTotalEnergy(l);
@@ -407,31 +452,50 @@ double DmpEvtBgoShower::GetEnergyRatioOfEMinClusterInLayer(int l)const
   return v;
 }
 
-double DmpEvtBgoShower::GetEnergyRatioOfEMaxClusterInMaxRMSLayer()const
+double DmpEvtBgoShower::GetERatioOfEMinClusterInEMinLayer()const
+{
+  int l = this->GetLayerIDOfMinE();
+  return this->GetERatioOfEMinClusterInLayer(l);
+}
+
+double DmpEvtBgoShower::GetERatioOfEMaxClusterInMaxRMSLayer()const
 {
   int l=this->GetLayerIDOfMaxRMS();
-  DmpEvtBgoCluster *ac = this->GetMaxClusterInLayer(l);
+  DmpEvtBgoCluster *ac = this->GetEMaxClusterInLayer(l);
   double v=0;
   if(ac){
     v = ac->fTotE / this->GetTotalEnergy(l);
   }
-  return v;//this->GetMaxClusterInLayer(l)->fTotE / this->GetTotalEnergy(l);
+  return v;
 }
 
-double DmpEvtBgoShower::GetFractalOfMaxMinLayer()const//LayerIDOfMaxMinLayer()const
+double DmpEvtBgoShower::GetEMax_ETail()const//LayerIDOfMaxMinLayer()const
 {
-  return TMath::Log10(this->GetEnergyRatioOfEMaxLayer()) / TMath::Log10(this->GetEnergyRatioOfEMinLayer());
+  return this->GetERatioOfEMaxLayer() / this->GetERatioAtTail();
 }
 
 //-------------------------------------------------------------------
-double DmpEvtBgoShower::GetEnergyRatioOfLayer(int l)const
+double DmpEvtBgoShower::GetERatioOfLayer(int l)const
 {
   return this->GetTotalEnergy(l) / fTotE;
 }
 
 
+std::vector<double> DmpEvtBgoShower::GetERatioOfLayers()const
+{
+  std::vector<double>  reme(BGO_LayerNO,0);
+  for(int i=0;i<fClusters->GetEntriesFast();++i){
+    DmpEvtBgoCluster *aC = dynamic_cast<DmpEvtBgoCluster*>(fClusters->At(i));
+    reme[aC->fLayer] += aC->GetTotalEnergy();
+  }
+  for(int l=0;l<BGO_LayerNO;++l){
+    reme[l] = reme[l] / fTotE;
+  }
+  return reme;
+}
+
 //-------------------------------------------------------------------
-DmpEvtBgoCluster* DmpEvtBgoShower::GetMaxClusterInLayer(int l)const
+DmpEvtBgoCluster* DmpEvtBgoShower::GetEMaxClusterInLayer(int l)const
 {
   DmpEvtBgoCluster *cc = 0;
   double max_e = 0;
@@ -447,24 +511,49 @@ DmpEvtBgoCluster* DmpEvtBgoShower::GetMaxClusterInLayer(int l)const
   return cc;
 }
 
+DmpEvtBgoCluster* DmpEvtBgoShower::GetEMinClusterInLayer(int l)const
+{
+  DmpEvtBgoCluster *cc = 0;
+  double min_e = 9999999;
+  for(int i=0;i<fClusters->GetEntriesFast();++i){
+    DmpEvtBgoCluster *aC = dynamic_cast<DmpEvtBgoCluster*>(fClusters->At(i));
+    if(aC->fLayer == l){
+      if(aC->fTotE < min_e){
+        min_e = aC->fTotE;
+        cc = aC;
+      }
+    }
+  }
+  return cc;
+}
+
 //-------------------------------------------------------------------
 double DmpEvtBgoShower::GetWindowEnergy(int nBars,int nHalf)const
 {
   double TE = 0;
   int lid = this->GetLayerIDOfMaxE();
+  DmpBgoFiredBar *seedB = this->GetEMaxBarInLayer(lid);
+  while(seedB == 0){
+    lid -= 1;
+    seedB = this->GetEMaxBarInLayer(lid);
+    //std::cout<<"DEBUG: "<<__FILE__<<"("<<__LINE__<<")"<<std::endl;
+  }
+  int bid = seedB->fBar;
   int min = (lid - nHalf)<0 ? 0 : lid - nHalf;
-  int max = (lid + nHalf)>BGO_LayerNO -1? BGO_LayerNO -1: lid + nHalf;
+  int max = (lid + nHalf)>13 ? 13: lid + nHalf;
   for(int i = min;i<= max;++i){
-    DmpEvtBgoCluster *aClu = this->GetMaxClusterInLayer(i);
-    if(aClu != 0){
-      TE += aClu->GetWindowEnergy(nBars);
+    std::vector<DmpBgoFiredBar*> bars = this->GetBars(i,0.5,1);
+    for(int b=0;b<bars.size();++b){
+      if(TMath::Abs(bars[b]->fBar - bid) <= nBars){
+        TE += bars[b]->fE;
+      }
     }
   }
   return TE;
 }
 
 //-------------------------------------------------------------------
-double DmpEvtBgoShower::GetWindowEnergyRatio(int nBars,int nHalf)const
+double DmpEvtBgoShower::GetWindowERatio(int nBars,int nHalf)const
 {
   return this->GetWindowEnergy(nBars,nHalf) / fTotE;
 }
@@ -476,8 +565,24 @@ int DmpEvtBgoShower::GetFiredBarNumber(int layerID,double e_low)const
   for(int l=0;l<nClus;++l){
     DmpEvtBgoCluster *aC = dynamic_cast<DmpEvtBgoCluster*>(fClusters->At(l));
     if(layerID == aC->fLayer || layerID == -1){
-      b += aC->GetFiredBarNumber(e_low);
+      b += aC->GetBarNumber(e_low);
     }
+  }
+  return b;
+}
+
+int DmpEvtBgoShower::GetMaxFiredBarNumber()const
+{
+  return this->GetFiredBarNumber(this->GetLayerIDOfMaxFiredBarNo());
+}
+
+std::vector<int> DmpEvtBgoShower::GetFiredBarNumbers(double e_low)const
+{
+  std::vector<int> b(BGO_LayerNO,0);
+  int nClus = fClusters->GetEntriesFast();
+  for(int l=0;l<nClus;++l){
+    DmpEvtBgoCluster *aC = dynamic_cast<DmpEvtBgoCluster*>(fClusters->At(l));
+    b[aC->fLayer] += aC->GetBarNumber(e_low);
   }
   return b;
 }
@@ -520,21 +625,21 @@ std::vector<DmpEvtBgoCluster*> DmpEvtBgoShower::GetAllClusterInLayer(int l)const
   return cInLayer;
 }
 
-std::vector<double> DmpEvtBgoShower::GetClusterERatioInLayer(int l)const
+std::vector<double> DmpEvtBgoShower::GetERatioOfClustersInLayer(int l)const
 {
   std::vector<DmpEvtBgoCluster*>    cInLayer = this->GetAllClusterInLayer(l);
   std::vector<double>  rv;
   double allE = this->GetTotalEnergy(l);
   for(int i=0;i<cInLayer.size();++i){
     rv.push_back(cInLayer[i]->fTotE / allE);
-    std::cout<<"\tDEBUG\t"<<rv.at(i);//<<std::endl;
+    //std::cout<<"\tDEBUG\t"<<rv.at(i);//<<std::endl;
   }
-  std::cout<<std::endl;
+  //std::cout<<std::endl;
   std::sort(rv.rbegin(),rv.rend());
-  for(int i=0;i<rv.size();++i){
-          std::cout<<"\t\t"<<rv.at(i);
-  }
-  std::cout<<std::endl;
+  //for(int i=0;i<rv.size();++i){
+  //        std::cout<<"\t\t"<<rv.at(i);
+  //}
+  //std::cout<<std::endl;
   return rv;
 }
 
@@ -556,92 +661,122 @@ std::vector<DmpBgoFiredBar*> DmpEvtBgoShower::GetBars(int l,double eBarCut,doubl
 }
 
 //-------------------------------------------------------------------
-std::vector<DmpBgoFiredBar*> DmpEvtBgoShower::GetIsolatedBar(int l,double noise)const
+std::vector<DmpBgoFiredBar*> DmpEvtBgoShower::GetIsolatedBar(std::vector<int> allL,double noise)const
 {
   std::vector<DmpBgoFiredBar*>  backme;
-  std::vector<DmpBgoFiredBar*>  allB;
-  std::vector<DmpEvtBgoCluster*> allC = this->GetAllClusterInLayer(l);
-  for(int ic=0;ic<allC.size();++ic){
-    int nB = allC[ic]->fFiredBar->GetEntriesFast();
-    for(int i=0;i<nB;++i){
-      DmpBgoFiredBar *aB = dynamic_cast<DmpBgoFiredBar*>(allC[ic]->fFiredBar->At(i));
-      if(aB->fE > noise){
-        allB.push_back(aB);
+  for(std::vector<int>::iterator it = allL.begin();it!=allL.end();++it){
+    std::vector<DmpBgoFiredBar*>  allB = this->GetBars(*it,noise,0);
+    int nbb = allB.size();
+    for(int ib=0;ib<nbb;++ib){
+      int bid = allB[ib]->fBar;
+      bool isIso = true;
+      for(int i = 0;i<nbb;++i){
+        if(TMath::Abs(allB[i]->fBar - bid) == 1){
+          isIso = false;
+          break;
+        }
       }
-    }
-  }
-  for(int ib=0;ib<allB.size();++ib){
-    int bid = allB[ib]->fBar;
-    bool isIso = true;
-    for(int i = 0;i<allB.size();++i){
-      if(TMath::Abs(allB[i]->fBar - bid) == 1){
-        isIso = false;
-        break;
-      }
-    }
-    if(isIso){
+      if(isIso){
         backme.push_back(allB[ib]);
+      }
     }
   }
   return backme;
 }
 
 //-------------------------------------------------------------------
-std::vector<DmpBgoFiredBar*> DmpEvtBgoShower::GetIsolatedBar(int l,double eLow, double eHigh,double noise)const
+std::vector<DmpBgoFiredBar*> DmpEvtBgoShower::GetIsolatedBar(std::vector<int> l,double eLow, double eHigh,double noise)const
 {
-  std::vector<DmpBgoFiredBar*>  backme;
-  std::vector<DmpBgoFiredBar*>  allB;
-  std::vector<DmpEvtBgoCluster*> allC = this->GetAllClusterInLayer(l);
-  for(int ic=0;ic<allC.size();++ic){
-    int nB = allC[ic]->fFiredBar->GetEntriesFast();
-    for(int i=0;i<nB;++i){
-      DmpBgoFiredBar *aB = dynamic_cast<DmpBgoFiredBar*>(allC[ic]->fFiredBar->At(i));
-      if(aB->fE > noise){
-        allB.push_back(aB);
-      }
-    }
-  }
-  for(int ib=0;ib<allB.size();++ib){
-    int bid = allB[ib]->fBar;
-    bool isIso = true;
-    for(int i = 0;i<allB.size();++i){
-      if(TMath::Abs(allB[i]->fBar - bid) == 1){
-        isIso = false;
-        break;
-      }
-    }
-    if(isIso){
-        if(allB[ib]->fE > eLow && allB[ib]->fE < eHigh) backme.push_back(allB[ib]);
+  std::vector<DmpBgoFiredBar*>  backme = this->GetIsolatedBar(l,noise);
+  for(std::vector<DmpBgoFiredBar*>::iterator it = backme.begin(); it != backme.end(); ){
+    if((*it)->fE < eLow || (*it)->fE > eHigh){
+            // erase this one, and to next
+      it = backme.erase(it);
+    }else{
+            // to next
+      ++it;
     }
   }
   return backme;
 }
 
-//-------------------------------------------------------------------
-std::vector<DmpBgoFiredBar*> DmpEvtBgoShower::GetIsolatedBarFromLayer(int sl,double noise)const
+DmpBgoFiredBar* DmpEvtBgoShower::GetEMaxIsolatedBar(std::vector<int> fromIDs,double noise)const
 {
-  std::vector<DmpBgoFiredBar*>  backme;
-  for(int l=sl;l<BGO_LayerNO;++l){
-    std::vector<DmpBgoFiredBar*> tmp = this->GetIsolatedBar(l,noise);
-    for(int i=0;i<tmp.size();++i){
-      backme.push_back(tmp.at(i));
+  std::vector<DmpBgoFiredBar*>  ab = this->GetIsolatedBar(fromIDs,noise);
+  if(ab.size() == 0){
+std::cout<<"DEBUG: "<<__FILE__<<"("<<__LINE__<<")"<<std::endl;
+    return 0;
+  }
+  DmpBgoFiredBar *mb =ab[0];
+  for(int i=0;i<ab.size();++i){
+    if(ab[i]->fE > mb->fE){
+      mb = ab[i];
     }
   }
-  return backme;
+  return mb;
 }
 
-std::vector<DmpBgoFiredBar*> DmpEvtBgoShower::GetIsolatedBarFromLayer(int sl,double el,double eh,double noise)const
+DmpBgoFiredBar* DmpEvtBgoShower::GetEMinIsolatedBar(std::vector<int> fromL,double noise)const
 {
-  std::vector<DmpBgoFiredBar*>  backme;
-  for(int l=sl;l<BGO_LayerNO;++l){
-    std::vector<DmpBgoFiredBar*> tmp = this->GetIsolatedBar(l,noise);
-    for(int i=0;i<tmp.size();++i){
-      if(tmp.at(i)->fE > el && tmp.at(i)->fE < eh){
-        backme.push_back(tmp.at(i));
-      }
+  std::vector<DmpBgoFiredBar*>  ab = this->GetIsolatedBar(fromL,noise);
+  if(ab.size() == 0) return 0;
+  DmpBgoFiredBar *mib =ab[0];
+  for(int i=0;i<ab.size();++i){
+    if(ab[i]->fE < mib->fE){
+      mib = ab[i];
     }
   }
-  return backme;
+  return mib;
+}
+
+int DmpEvtBgoShower::GetLayerIDOfMostIsolatedBars(double eLow,double eHigh,double noise)const
+{
+  std::vector<int> layerIDs;
+  for(int l=0;l<BGO_LayerNO;++l){
+    layerIDs.push_back(l);
+  }
+  std::vector<DmpBgoFiredBar*>  allBars = this->GetIsolatedBar(layerIDs,eLow,eHigh,noise);
+  std::vector<int> nbars(BGO_LayerNO,0);
+  for(int i=0;i<allBars.size();++i){
+    nbars[allBars[i]->fLayer] +=1;
+  }
+  int rme=-1;
+  int nbs = 0;
+  for(int l=0;l<BGO_LayerNO;++l){
+    if(nbars[l] > nbs){
+      rme = l;
+      nbs = nbars[l];
+    }
+  }
+  return rme;
+}
+
+int DmpEvtBgoShower::GetIsolatedBarNo(std::vector<int> l, double el, double eh,double noise)const
+{
+  std::vector<DmpBgoFiredBar*>  aa = this->GetIsolatedBar(l,el, eh,noise);
+  return aa.size();
+}
+
+double DmpEvtBgoShower::GetBRMSOfIsolatedBar(std::vector<int> L,double el,double eh,double noise)const
+{
+  std::vector<DmpBgoFiredBar*>  ab = this->GetIsolatedBar(L,el,eh,noise);
+  int n = ab.size();
+  int bs[n];
+  for(int i=0;i<n;++i){
+    bs[i]  = ab[i]->fBar;
+  }
+  return TMath::RMS(n,bs);
+}
+
+double DmpEvtBgoShower::GetLRMSOfIsolatedBar(std::vector<int> l,double el,double eh,double noise)const
+{
+  std::vector<DmpBgoFiredBar*>  ab = this->GetIsolatedBar(l,el,eh,noise);
+  int n = ab.size();
+  int bs[n];
+  for(int i=0;i<n;++i){
+    bs[i]  = ab[i]->fLayer;
+  }
+  return TMath::RMS(n,bs);
 }
 
 //-------------------------------------------------------------------
@@ -684,32 +819,108 @@ int DmpEvtBgoShower::GetClusterNo(double eL,double eH)const
 
 double DmpEvtBgoShower::GetGValue(int layerID)const
 {
-  double v = fRMS[layerID];
-  if(v <= 0) return v;
-  return fRMS[layerID]*fRMS[layerID] * fTotE / this->GetTotalEnergy(layerID);
+  double e = this->GetTotalEnergy(layerID);
+  if(e >0){
+    return TMath::Log10(fRMS[layerID]*fRMS[layerID] * fTotE / e);
+  }
+  return -1;
 }
 
-double DmpEvtBgoShower::GetTotalRMS()const
+double DmpEvtBgoShower::GetMaxRMSFromTail()const
+{
+  double m_rms = 0;
+  for(int l = 1;l < BGO_LayerNO;++l){
+    if(fRMS[l] > m_rms){
+      m_rms = fRMS[l];
+    }
+  }
+  return m_rms;
+}
+
+double DmpEvtBgoShower::GetTotalRMS(int id,bool allGap)const
 {
   double v = 0.;
   for(int i=0;i<BGO_LayerNO;++i){
-    v += fRMS[i];
+    if(i%2 == id || id == -1){
+      if(fRMS[i] >= 0 || allGap){
+        v += fRMS[i];
+      }
+    }
   }
   return v;
 }
 
-double DmpEvtBgoShower::GetNormalizedRMS(int layerID)const
+double DmpEvtBgoShower::GetRMS()const
 {
-  return fRMS[layerID]/this->GetTotalRMS();
+  double vxm,vym;
+  int xl=-1,yl = 99;  // NOTE:    must set -1 and 99
+  int last_xl=0,last_yl=0;
+  while(TMath::Abs(xl-yl) != 1){
+    if(last_xl == xl && last_yl == yl){
+      break;
+    }else{
+      last_xl = xl;
+      last_yl = yl;
+    }
+    if(xl > yl) xl = yl;  // set the small value
+    vxm = 0.;
+    vym = 0.;
+  //std::cout<<"DEBUG: "<<__FILE__<<"("<<__LINE__<<")\t"<<xl<<"\t"<<yl<<std::endl;
+    for(int i=xl+1;i<BGO_LayerNO;++i){
+      if(i%2 == 0){
+        if(vxm < fRMS[i]){
+          vxm = fRMS[i];
+          xl = i;
+        }
+      }else{
+        if(vym < fRMS[i]){
+          vym = fRMS[i];
+          yl = i;
+        }
+      }
+    }
+  }
+  std::cout<<"DEBUG: "<<__FILE__<<"("<<__LINE__<<")\t"<<xl<<"\t"<<yl<<std::endl;
+  return TMath::Sqrt(vxm*vxm + vym *vym);
+}
+
+double DmpEvtBgoShower::GetRMSOfEMaxBarID(int type)const
+{
+  double bkme = 0;
+  if(type == -1){
+    double x = this->GetRMSOfEMaxBarID(0);
+    double y = this->GetRMSOfEMaxBarID(1);
+    return TMath::Sqrt(x*x + y*y);
+  }
+  int  bID[7];
+  int nBars = 0;
+  for(int l=0;l<BGO_LayerNO;++l){
+    if(l%2 == type){
+      DmpBgoFiredBar *ab  = this->GetEMaxBarInLayer(l);
+      if(ab != 0){
+        bID[nBars] = ab->fBar;
+        ++nBars;
+      }
+    }
+  }
+  return TMath::RMS(nBars,bID);
 }
 
 #define Z0 58.5         // first layer z
 //-------------------------------------------------------------------
 Position DmpEvtBgoShower::GetEntryPoint()const
 {
-  Position p(0,0,Z0);
+  Position p(0,0,-1);
   p.SetX(fXZFitPar[0]+fXZFitPar[1]*Z0);
   p.SetY(fYZFitPar[0]+fYZFitPar[1]*Z0);
+  for(int l=0;l<BGO_LayerNO;++l){
+    DmpEvtBgoCluster *mc = this->GetEMaxClusterInLayer(l);
+    if(mc == 0) continue;
+    if(mc->GetERatioOfSeedBar() > 0.5 && this->GetClusterNoInLayer(l) < 3){
+      p.SetZ(mc->fCenter.z());
+      break;
+    }
+  }
   return p;
 }
 
@@ -723,7 +934,7 @@ Direction DmpEvtBgoShower::GetTrackDirection()const
 //-------------------------------------------------------------------
 void DmpEvtBgoShower::Calculation()
 {
-  fTotE = this->GetTotalEnergy();
+  fTotE = this->GetTotalEnergy(-1);
 
   fLRMS = 0.;
   std::vector<double>  eInLayer(BGO_LayerNO,0);
@@ -767,24 +978,28 @@ void DmpEvtBgoShower::Calculation()
   TH2D xz_posi("xz","xz",550,50,600,800,-400,400);
   TH2D yz_posi("yz","yz",550,50,600,800,-400,400);
   static TF1  p1("myf","pol1");
+  int nx=0,ny=0;
   for(int i=0;i<BGO_LayerNO;++i){
-    if(this->GetEnergyRatioOfLayer(i) < 0.05) continue;
-    std::vector<DmpBgoFiredBar*>  allBars = this->GetBars(i,10,20);
+    if(this->GetERatioOfLayer(i) < 0.03 && i > 5) continue;
+    std::vector<DmpBgoFiredBar*>  allBars = this->GetBars(i,10,18);
     double te = this->CalculateTotalE(allBars);
     TVector3 pos = this->CalculatePosition(allBars);
     if(i%2 == 0){
       yz_posi.Fill(pos.z(),pos.y(),te);
+            ++ny;
     }else{
+            ++nx;
       xz_posi.Fill(pos.z(),pos.x(),te);
     }
   }
+if(nx < 2 || ny <2) std::cout<<"DEBUG: "<<__FILE__<<"("<<__LINE__<<")\tnx = "<<nx<<"\tny = "<<ny<<"\t\tTotE = "<<fTotE<<std::endl;
   if(xz_posi.GetEntries()>1 && yz_posi.GetEntries()>1){
     xz_posi.Fit("myf","QCN");
     fXZFitPar[0] = p1.GetParameter(0);
     fXZFitPar[1] = p1.GetParameter(1);
     fXZFitPar[2] = p1.GetParError(0);
     fXZFitPar[3] = p1.GetParError(1);
-    fXZFitPar[4] = p1.GetChisquare();
+    fXZFitPar[4] = p1.GetChisquare()/p1.GetNDF();
   //std::cout<<"XZ fit parameters (Pa0,P1,P0_E,P1_E,Chi2):";
   //for(int i=0;i<5;++i){
   //  std::cout<<"\t"<<fXZFitPar[i];
@@ -795,7 +1010,7 @@ void DmpEvtBgoShower::Calculation()
     fYZFitPar[1] = p1.GetParameter(1);
     fYZFitPar[2] = p1.GetParError(0);
     fYZFitPar[3] = p1.GetParError(1);
-    fYZFitPar[4] = p1.GetChisquare();
+    fYZFitPar[4] = p1.GetChisquare()/p1.GetNDF();
   }
 }
 
@@ -821,7 +1036,7 @@ TVector3 DmpEvtBgoShower::CalculatePosition(std::vector<DmpBgoFiredBar*> rig)con
 }
 
 //-------------------------------------------------------------------
-void DmpEvtBgoShower::MyPrint(bool allInfor)const
+void DmpEvtBgoShower::MyPrint(bool allInfor)const // TODO
 {
   std::cout<<"===> Energy, nClusters, Max_E_L, fLRMS:\t"<<fTotE<<"\t"<<fClusters->GetEntriesFast()<<"\t"<<GetLayerIDOfMaxE()<<"\t"<<fLRMS<<std::endl;
   std::cout<<"===> Linear fit parameters (Pa0,P1,P0_E,P1_E,Chi2):\n\tXZ:\t";
@@ -850,10 +1065,21 @@ double DmpEvtBgoShower::GetGValueOfEMaxLayer()const
   return this->GetGValue(this->GetLayerIDOfMaxE());
 }
 
+double DmpEvtBgoShower::GetGValueOfCoG()const
+{
+  return this->GetGValue(this->GetLayerIDOfCoG());
+}
+
 //-------------------------------------------------------------------
 double DmpEvtBgoShower::GetRMSOfEMaxLayer()const
 {
   return this->fRMS[this->GetLayerIDOfMaxE()];
+}
+
+double DmpEvtBgoShower::GetRMSOfCoG()const
+{
+  int l = this->GetLayerIDOfCoG();
+  return this->fRMS[l];
 }
 
 //-------------------------------------------------------------------
@@ -919,17 +1145,10 @@ double DmpEvtBgoShower::GetMaxGValue()const
   return this->GetGValue(lid);
 }
 
-//-------------------------------------------------------------------
-double DmpEvtBgoShower::GetMyValue(int nHalfLayer)const
+double DmpEvtBgoShower::GetMinGValue()const
 {
-  int id = this->GetLayerIDOfMaxGValue();
-  double v = 0;
-  int min = (id - nHalfLayer)<0 ? 0: (id-nHalfLayer);
-  int max = (id + nHalfLayer)>13 ? 13: (id+nHalfLayer);
-  for(int i = min;i<=max;++i){
-    v += this->GetGValue(i);
-  }
-  return v;
+  int lid = this->GetLayerIDOfMinGValue();
+  return this->GetGValue(lid);
 }
 
 //-------------------------------------------------------------------
@@ -944,6 +1163,44 @@ int DmpEvtBgoShower::GetLayerIDOfMaxRMS()const
     }
   }
   return id;
+}
+
+double DmpEvtBgoShower::GetERMax(int nLayer)const
+{
+  std::vector<double>  aE = this->GetERatioOfLayers();
+  int lCoG = this->GetLayerIDOfMaxE();
+  int ys = nLayer%2;
+  nLayer = nLayer / 2;
+
+  std::vector<double> e(4,0);
+  for(int n=0;n<4;++n){
+    for(int i=lCoG-nLayer-n;i<=lCoG + nLayer + ys-n;++i){
+      e[n] += (i>=0 && i<=BGO_LayerNO-1) ? aE.at(i) : 0;
+    }
+  }
+
+  double mx =0;
+  for(int i=0;i<4;++i){
+    if(e[i] > mx){
+      mx = e[i];
+    }
+  }
+  return mx;
+}
+
+double DmpEvtBgoShower::GetERMin(int nLayer)const
+{
+  int l= this->GetLayerIDOfTail();
+  double t=0;
+  for(int i=l-nLayer+1;i<=l;++i){
+    t += this->GetERatioOfLayer(i);
+  }
+  return t;
+}
+
+double DmpEvtBgoShower::GetERT2()const
+{
+  return TMath::Log10(this->GetERMin(2));
 }
 
 //-------------------------------------------------------------------
@@ -971,7 +1228,7 @@ int DmpEvtBgoShower::GetLayerIDOfMinRMS()const
   int id = 0;
   double v = 999.9;
   for(int i = 0;i<BGO_LayerNO;++i){
-    if(fRMS[i]<v && !(fRMS[i] <0)){
+    if(fRMS[i]<v && fRMS[i] > 0){
       v = fRMS[i];
       id = i;
     }
@@ -992,6 +1249,17 @@ DmpBgoFiredBar* DmpEvtBgoShower::GetEMaxBar()const
     }
   }
   return it;
+}
+
+DmpBgoFiredBar* DmpEvtBgoShower::GetBar(int l,int b)const
+{
+  std::vector<DmpBgoFiredBar*> bars = this->GetBars(l,0,0);
+  for(int i=0;i<bars.size();++i){
+    if(bars[i]->fBar == b){
+      return bars[i];
+    }
+  }
+  return 0;
 }
 
 //-------------------------------------------------------------------
@@ -1277,6 +1545,7 @@ bool DmpEvtBgoShower::Group4_111(double threshold)const
 DmpBgoFiredBar* DmpEvtBgoShower::GetEMaxBarInLayer(int l)const
 {
   std::vector<DmpEvtBgoCluster*>  cluInL = this->GetAllClusterInLayer(l);
+  if(cluInL.size() == 0) return 0;
   DmpBgoFiredBar *add=cluInL[0]->GetSeedBar();
   for(int i=1;i<cluInL.size();++i){
     DmpBgoFiredBar *tmp=cluInL[i]->GetSeedBar();
@@ -1300,18 +1569,288 @@ int DmpEvtBgoShower::GetClusterNoInLayer(int l,double eCut,double eh)const
 
 double DmpEvtBgoShower::GetFractal(int l,int b1,int b2)const
 {
-  double f=0;
-  DmpEvtBgoCluster *ac = GetMaxClusterInLayer(l);
-  if(ac){
-    return ac->GetFractal(b1,b2);
+  DmpBgoFiredBar* seedBar = this->GetEMaxBarInLayer(l);
+  if(seedBar == 0) return 0;
+  int bid = seedBar->fBar;
+  double seedE = seedBar->fE;
+  std::vector<DmpBgoFiredBar*>  allB = this->GetBars(l,2.5,10);
+  double tmpe1=0,tmpe2=0;
+  for(int i=0;i<allB.size();++i){
+    int b = allB[i]->fBar;
+    double e = allB[i]->fE;
+    if(TMath::Abs(bid - b) <= b1){
+      tmpe1 += e;
+    }
+    if(TMath::Abs(bid - b) <= b2){
+      tmpe2 += e;
+    }
   }
-  return f;
+  return TMath::Log10(seedE/tmpe1) / TMath::Log10(seedE/tmpe2);
 }
 
-double DmpEvtBgoShower::GetFractalOfEMaxLayer(int b1,int b2)const
+double DmpEvtBgoShower::GetFractal(int b1,int b2)const
+{
+  DmpBgoFiredBar* seedBar = this->GetEMaxBar();
+  if(seedBar == 0) return 0;
+  int bid = seedBar->fBar;
+  double seedE = 0;//seedBar->fE;
+  double tmpe1=0,tmpe2=0;
+  for(int l=0;l<fClusters->GetEntriesFast();++l){
+    DmpEvtBgoCluster* ac = dynamic_cast<DmpEvtBgoCluster*>(fClusters->At(l));
+    for(int i=0;i<ac->fFiredBar->GetEntriesFast();++i){
+      DmpBgoFiredBar *ab = dynamic_cast<DmpBgoFiredBar*>(ac->fFiredBar->At(i));
+      int b = ab->fBar;
+      double e = ab->fE;
+      if(TMath::Abs(bid - b) <= b1){
+        tmpe1 += e;
+      }
+      if(TMath::Abs(bid - b) <= b2){
+        tmpe2 += e;
+      }
+      if( b == bid){
+        seedE += e;
+      }
+    }
+  }
+  return TMath::Log10(seedE/tmpe1) / TMath::Log10(seedE/tmpe2);
+}
+
+double DmpEvtBgoShower::GetERL3(int l,int type)const
+{
+  if(this->GetFiredBarNumber(l) < 3) return 0;
+  double b = this->GetCoGBarIDInLayer(l);
+  double et = this->GetEnergyOfBar(l,b);
+  et += this->GetEnergyOfBar(l,b+1);
+  et += this->GetEnergyOfBar(l,b-1);
+  double xm = fTotE;
+  if(type==0){
+    xm = this->GetTotalEnergy(l);
+    if(xm == 0) return 0;
+  }
+  return et / xm;
+}
+
+double DmpEvtBgoShower::GetER3()const
+{
+  double x=0;
+  for(int l=0;l<BGO_LayerNO;++l){
+    x += this->GetERL3(l,1);
+  }
+  return x;
+}
+
+double DmpEvtBgoShower::GetERL3_F2L()const
+{
+  double first=0;
+  double last=0;
+  for(int l=0;l<BGO_LayerNO;++l){
+    double x = this->GetERL3(l,0);
+    if(x > 0){
+      last = x;
+      if(first == 0){
+        first = x;
+      }
+    }
+  }
+  return first / last;
+}
+
+
+int DmpEvtBgoShower::GetLayerIDOfMaxERL3()const
+{
+  double emax =0;
+  int n=0;
+  for(int l=0;l<BGO_LayerNO;++l){
+    double e = this->GetERL3(l,0);
+    if(e > emax ){
+      n = l;
+      emax = e;
+    }
+  }
+  return n;
+}
+
+double DmpEvtBgoShower::GetLFractal(int nL1,int nL2)const
+{
+  std::vector<double> eR = this->GetERatioOfLayers();
+  double lid =this->GetLayerIDOfMaxE();
+  double te1=0, te2 = 0;
+  for(int l=0;l<BGO_LayerNO;++l){
+    if(TMath::Abs(l - lid) <= nL1){
+      te1 += eR[l];
+    }
+    if(TMath::Abs(l - lid) <= nL2){
+      te2 += eR[l];
+    }
+  }
+  return TMath::Log10(eR[lid] / te1) / TMath::Log10(eR[lid] / te2);
+}
+
+double DmpEvtBgoShower::GetFractalBeforeEMaxLayer(int b1,int b2)const
 {
   int l=this->GetLayerIDOfMaxE();
+  return this->GetFractal(l-1,b1,b2);
+}
+
+double DmpEvtBgoShower::GetFractalOfCoG(int b1,int b2)const
+{
+  int l=this->GetLayerIDOfCoG();
   return this->GetFractal(l,b1,b2);
+}
+
+double DmpEvtBgoShower::GetLayerIDOfCoG()const
+{
+  double v = 0;
+  double te =0;
+  for(int l=0;l<BGO_LayerNO;++l){
+    double e = this->GetTotalEnergy(l);
+    if(e >0){
+      v += e * (l+1);
+      te += e;
+    }
+  }
+  return (v / te -1);
+}
+
+double DmpEvtBgoShower::GetTMax()const
+{
+  int l = this->GetLayerIDOfMaxE();
+  double eT = 0,v =0;
+  int f = (l-1 < 0)? 0: l-1;
+  int t = (l+1 > 13)? 13: l+1;
+  for(int il = f;il<=t;++il){
+    double x = this->GetTotalEnergy(il);
+    v += x * (il+1);
+    eT += x;
+  }
+  return (v / eT -1);
+}
+
+int DmpEvtBgoShower::GetLayerIDOfTail(double eCut,int nBar)const
+{
+  for(int l=BGO_LayerNO-1;l>=0;--l){
+    double e = this->GetTotalEnergy(l);
+    if(e >= eCut && this->GetFiredBarNumber(l) >= nBar){
+      if(this->GetTotalEnergy(l-1) >= eCut){   // next layer has E
+        return l;
+      }
+    }
+  }
+std::cout<<"DEBUG: "<<__FILE__<<"("<<__LINE__<<")\t\t no tail\t\tTotal E = "<<fTotE<<std::endl;
+  return 0;
+}
+
+double DmpEvtBgoShower::GetRMSAtTail()const
+{
+  int l = this->GetLayerIDOfTail();
+  return fRMS[l];
+}
+
+double DmpEvtBgoShower::GetFAtTail()const
+{
+  int l = this->GetLayerIDOfTail();
+  return fFValue[l];
+}
+
+double DmpEvtBgoShower::GetLogFAtTail()const
+{
+  return TMath::Log10(this->GetFAtTail());  
+}
+
+double DmpEvtBgoShower::GetGAtTail()const
+{
+  int l = this->GetLayerIDOfTail();
+  return this->GetGValue(l);
+}
+
+double DmpEvtBgoShower::GetLogGAtTail()const
+{
+  return TMath::Log10(this->GetGAtTail());
+}
+
+double DmpEvtBgoShower::GetMaxDeltaE()const
+{
+  std::vector<double>  xx = this->GetERatioOfLayers();
+  double m =0;
+  for(int l = 1;l<13;++l){       // min is 1
+    double v = xx[l] - xx[l-1];
+    if(v > m){
+      m = v;
+    }
+  }
+  return m;
+}
+
+double DmpEvtBgoShower::GetERL3OfMaxDeltaE()const
+{
+  int l = this->GetLayerIDOfMaxDeltaE();
+  return this->GetERL3(l);
+}
+
+int DmpEvtBgoShower::GetLayerIDOfMaxDeltaE()const
+{
+  std::vector<double>  xx = this->GetERatioOfLayers();
+  int n = -1;
+  double m =0;
+  for(int l = 1;l<13;++l){       // min is 1
+    double v = xx[l] - xx[l-1];
+    if(v > m){
+      m = v;
+      n = l;
+    }
+  }
+  return n;
+}
+
+int DmpEvtBgoShower::GetMaxDeltaBarNo()const
+{
+  std::vector<int>  xx = this->GetFiredBarNumbers();//ERatioOfLayers();
+  int m =0;
+  for(int l = 1;l<13;++l){       // min is 1
+    int v = xx[l] - xx[l-1];
+    if(v > m){
+      m = v;
+    }
+  }
+  return m;
+}
+ 
+int DmpEvtBgoShower::GetLayerIDOfMaxDeltaBarNo()const
+{
+  std::vector<int>  xx = this->GetFiredBarNumbers();//ERatioOfLayers();
+  int m =0;
+  int n=0;
+  for(int l = 1;l<13;++l){       // min is 1
+    int v = xx[l] - xx[l-1];
+    if(v > m){
+      m = v;
+      n = l;
+    }
+  }
+  return n;
+}
+
+double DmpEvtBgoShower::GetERatioAtTail()const
+{
+  int l = this->GetLayerIDOfTail();
+  return this->GetERatioOfLayer(l);
+}
+
+double DmpEvtBgoShower::GetLogERatioAtTail()const
+{
+  return TMath::Log10(this->GetERatioAtTail());
+}
+
+double DmpEvtBgoShower::GetMaxGValueFromTail()const
+{
+  double gm = 0;
+  for(int l=1;l<BGO_LayerNO;++l){
+    double t = this->GetGValue(l);
+    if(t > gm){
+      gm = t;
+    }
+  }
+  return gm;
 }
 
 double DmpEvtBgoShower::GetFractalOfGMaxLayer(int b1,int b2)const

@@ -7,6 +7,7 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
+#include <map>
 
 #include "TCut.h"
 #include "TCanvas.h"
@@ -15,6 +16,7 @@
 #include "TProfile.h"
 #include "TChain.h"
 #include "TStyle.h"
+#include "TLine.h"
 #include "TLegend.h"
 #include "TMultiGraph.h"
 #include "TDirectory.h"
@@ -85,23 +87,95 @@ namespace Steer
   }
   TLegend *GetNewLegend()
   {
-    TLegend *lg = new TLegend(0.55,0.65,0.66,0.82);
+    TLegend *lg = new TLegend(0.6,0.7,0.9,0.9);
     return lg;
   }
 
+  TString eFile = "./Output/MC_eletron-150GeV_P43-Evts32000.root";
+  TString pFile = "./Output/MC_proton-400GeV_P43-Evts72200.root";
+
+  TString eFileD = "./Output/Data_e150GeV-P43_68_0-20141115_090724_093720_134904-Evts8792.root";
+  TString pFileD = "./Output/Data_p400GeV-P43_68_0.1-20141114_142921-222051-Evts4131.root";
+
 };
 
+namespace Fig
+{
+  void SetAxis(TH1* h,float xSize=0.06,float xOffset=0.8,float ySize=0.06,float yOffset=0.8,float xLabelS= 0.05,float yLabelS=0.05)
+  {
+    h->SetTitleSize(xSize,"X");
+    h->SetTitleOffset(xOffset,"X");
+    h->SetTitleSize(ySize,"Y");
+    h->SetTitleOffset(yOffset,"Y");
+    h->SetLabelSize(xLabelS,"X");
+    h->SetLabelSize(yLabelS,"Y");
+    h->SetLineWidth(2);
+  }
+
+  void SetMarker(TAttMarker* h,float style=30,float color=2, float size=1)
+  {
+    h->SetMarkerStyle(style);
+    h->SetMarkerColor(color);
+    h->SetMarkerSize(size);
+  }
+};
+
+//-------------------------------------------------------------------
+/*
 namespace Cuts
 {
-  TCut GlobalCut = "Bgo.T0()";
-  TCut VerticalMips = "Bgo.GetFiredBarNumber() < 16 && Bgo.ClusterNo(10) < 16";
-  bool IsVerticalMips(){
-    return (Conf::evt_bgo->GetFiredBarNumber() < 16 && Conf::evt_bgo->GetClusterNo(10) <16);
-  }
-  TCut MipsWindow = "Bgo.fTotE > 200 && Bgo.fTotE <450 && Bgo.fLRMS > 3.5 && Bgo.fLRMS < 4.4 && Bgo.GetTotalRMS()>-2 && Bgo.GetTotalRMS()<2";
-  TCut Trig3_0000 = "Bgo.Group3_0000(0.2)";
-};
+  TString T0 = "Bgo.T0()";
+  TString ECut0 = "Bgo.fTotE>100 &&Bgo.fTotE<99999999";
+  TString ECut1 = "Bgo.fTotE>135000 &&Bgo.fTotE<150000";
+  TString Trig3_0000 = "Bgo.Group3_0000(0.2)";
 
+  TString Mips0 = "Bgo.GetMaxRMS()<0.55";
+  TString Mips1 = "Bgo.fTotE > 200 && Bgo.fTotE <450 && Bgo.fLRMS > 3.5 && Bgo.fLRMS < 4.4 && Bgo.GetTotalRMS()>-2 && Bgo.GetTotalRMS()<2";
+  TString Mips2 = "Bgo.GetFiredBarNumber() < 16 && Bgo.ClusterNo(10) < 16";
+};
+  //bool IsVerticalMips()
+  //{
+  //  //return (Conf::evt_bgo->GetFiredBarNumber() < 16 && Conf::evt_bgo->GetClusterNo(10) <16);
+  //}
+*/
+
+
+std::map<TString,TString>  Cut;
+#ifdef __MAKECINT__
+#pragma link C++ class std::map<TString,TString>+;
+#endif
+void AddCut(TString a,TString b)
+{
+  Cut[a] = b;
+}
+
+void PrintCuts()
+{
+  cout<<"\nPrint Cuts:"<<endl;
+  for(std::map<TString,TString>::iterator it=Cut.begin();it!=Cut.end();++it){
+    cout<<"\t"<<it->first<<"\t\t"<<it->second<<endl;
+  }
+  cout<<endl;
+}
+
+void InitCuts()
+{
+  if(Cut.size()) return;
+  cout<<"\nLoading Cuts..."<<endl;
+    Cut["T0"]           =   "Bgo.T0()";
+    Cut["ECut0"]        =   "Bgo.fTotE>10 &&Bgo.fTotE<99999999";
+    Cut["ECut1"]        =   "Bgo.fTotE>135000 &&Bgo.fTotE<150000";
+    Cut["Trig3_0000"]   =   "Bgo.Group3_0000(0.2)";
+    Cut["Mips0"]        =   "Bgo.GetMaxRMS()<0.55";
+    Cut["Mips1"]        =   "Bgo.fTotE > 200 && Bgo.fTotE <450 && Bgo.fLRMS > 3.5 && Bgo.fLRMS < 4.4 && Bgo.GetTotalRMS()>-2 && Bgo.GetTotalRMS()<2";
+    Cut["Mips2"]        =   "Bgo.GetFiredBarNumber() < 16 && Bgo.ClusterNo(10) < 16";
+
+    Cut["BT_e"]         =   "Bgo.T0() && Bgo.fLRMS > 1.9 && Bgo.fLRMS < 2.4 && Bgo.GetTotalRMS() > 12 && Bgo.GetTotalRMS()<17 && Bgo.GetEntryPoint().x() >37 && Bgo.GetEntryPoint().x()<45 && Bgo.GetEntryPoint().y()>64 && Bgo.GetEntryPoint().y()<74";
+    Cut["BT_p"]         = Cut["T0"] +"&&" + Cut["ECut1"];
+    PrintCuts();
+}
+
+//-------------------------------------------------------------------
 void ResetInputFile(TString f)
 {
   Conf::inputFileName.clear();
@@ -114,6 +188,7 @@ void ResetInputFile(TString f)
   Conf::chain->AddFile(f);
   Conf::chain->SetBranchAddress("Bgo",&Conf::evt_bgo);
   Conf::nEvts = Conf::chain->GetEntries();
+  InitCuts();
 std::cout<<"===>  entries: "<<Conf::nEvts<<std::endl;
 }
 
@@ -129,6 +204,7 @@ void AddInputFile(TString f)
     Conf::chain->SetBranchAddress("Bgo",&Conf::evt_bgo);
   }
   Conf::nEvts = Conf::chain->GetEntries();
+  InitCuts();
 std::cout<<"===>  entries: "<<Conf::nEvts<<std::endl;
 }
 
@@ -143,7 +219,7 @@ void PrintInputFile()
   }
 }
 
-void MyDraw(TString exp, TCut cuts= Cuts::GlobalCut, TString opt="")
+void MyDraw(TString exp, TString cuts= Cut["T0"], TString opt="")
 {
   if(Conf::inputFileName.size() == 0){
     cout<<"\tWARNING:\t do not have any input files"<<endl;
@@ -167,176 +243,584 @@ void MyDraw(TString exp, TCut cuts= Cuts::GlobalCut, TString opt="")
   gPad->SetGrid();
 }
 
-// *
-// *  TODO:  how to use TCuts as TTree::Draw() ?? 
-// *
-void LongitudinalProfile(bool skipMips = true,TCut cuts=Cuts::GlobalCut,TString opt="profg")
+void DrawEventID(TString selection)
 {
-    TString cName = "c";
-          cName +=Conf::can.size();
-          cName +="Energy_In_Layer";
+  MyDraw("This->GetReadEntry()",selection);
+}
+
+long GetEntries(TString selection)
+{
+  TTree *t = Conf::LinkTree()->CopyTree(selection);
+  return t->GetEntries();
+}
+
+void DrawThisEvent(long evtID)
+{
+  TString name = "EventID_";
+          name += evtID;
           TString tmp = Conf::inputFileName[Conf::inputFileName.size()-1];
           tmp.Remove(0,tmp.Last('/')+1);
           tmp.Remove(tmp.Last('.'),tmp.Length());
-          cName +="--"+tmp;
+          name +="--"+tmp;
+  TH2F *xz =  new TH2F("XZ_"+name,"XZ;layer ID;bar ID",14,0,14,22,0,22); // xz->GetXaxis()->SetTitle("layer ID");   xz->GetYaxis()->SetTitle("bar ID");
+  Fig::SetAxis(xz);
+  TH2F *yz =  new TH2F("YZ_"+name,"YZ;layer ID;bar ID",14,0,14,22,0,22); // yz->GetXaxis()->SetTitle("layer ID");   yz->GetYaxis()->SetTitle("bar ID");
+  Fig::SetAxis(yz);
 
-    TH2D *eInL = new TH2D(cName,"E_layer / E_total",14,0,14,5000,0,0.5);
-    for(int ievt=0;ievt<Conf::nEvts;++ievt){
-      Conf::chain->GetEntry(ievt);
-      if(Cuts::IsVerticalMips() && skipMips){
-        continue;
+  Conf::LinkTree()->GetEntry(evtID);
+
+  double totalE = Conf::evt_bgo->fTotE;
+
+  cout<<"\n\n\tEvent ID "<<evtID<<"\tRec E = "<<totalE/1000<<" GeV"<<endl;
+
+  double etInL[BGO_LayerNO]={0};
+  //double L_rms[BGO_LayerNO];
+  //double L_f[BGO_LayerNO];
+  double L_g[BGO_LayerNO];
+  double L_EOfSeedBar[BGO_LayerNO];
+  double L_Fractal[BGO_LayerNO];
+  double layerID[BGO_LayerNO];
+  double L_ERL3[BGO_LayerNO];
+  double L_firedBarNo[BGO_LayerNO];
+
+  for(int l=0;l<BGO_LayerNO;++l){
+    std::vector<DmpBgoFiredBar*>  abb = Conf::evt_bgo->GetBars(l,2.5,10);
+    if(l%2 == 0){
+      for(size_t b=0;b<abb.size();++b){
+        yz->Fill(l,abb[b]->fBar,abb[b]->fE / totalE);
       }
-      for(int il=0;il<BGO_LayerNO;++il){
-        eInL->Fill(il,Conf::evt_bgo->GetTotalEnergy(il)/ Conf::evt_bgo->fTotE);
+    }else{
+      for(size_t b=0;b<abb.size();++b){
+        xz->Fill(l,abb[b]->fBar,abb[b]->fE / totalE);
       }
     }
-
-    Conf::can.push_back(new TCanvas(cName,cName));
-    TCanvas *c = Conf::can[Conf::can.size()-1];
-
-    c->cd(2)->Divide(1,3,0,0);
-    c->cd(1);
-    gPad->SetGrid();
-    eInL->SetMarkerStyle(6);
-    eInL->Draw();
-    TProfile *eInL_proX = eInL->ProfileX();
-    eInL_proX->SetMarkerStyle(30);
-    eInL_proX->SetMarkerSize(2);
-    eInL_proX->SetMarkerColor(2);
-    eInL_proX->SetLineWidth(2);
-    eInL_proX->SetLineColor(2);
-    eInL_proX->Draw("samee");
-    c->cd(2);
-    gPad->SetGrid();
-    Conf::LinkTree()->Draw("Bgo.GetEnergyOfEMaxLayer():Bgo.GetLayerIDOfMaxE()",cuts,opt);
-    c->cd(3);
-    gPad->SetGrid();
-    Conf::LinkTree()->Draw("Bgo.GetEnergyOfEMaxLayer()/Bgo.fTotE : Bgo.GetLayerIDOfMaxE()",cuts,opt);
-}
-
-void TransverseProfile()
-{
-  TString cName = "c";
-         cName +=Conf::can.size();
-         cName +="Transverse Profile";
-         TString tmp = Conf::inputFileName[Conf::inputFileName.size()-1];
-         tmp.Remove(0,tmp.Last('/')+1);
-         tmp.Remove(tmp.Last('.'),tmp.Length());
-         cName +="--"+tmp;
-
-  TH2D*  transInL[BGO_LayerNO];
-  for(int i=0;i<BGO_LayerNO;++i){
-    transInL[i] = new TH2D(Form("layer %d",i)+cName,Form("layer %d;BarID;EnergyRotaio",i),22,0,22,1100,0,1.1);
-    //transInL[i]->SetMarkerStyle(20);
-    //transInL[i]->SetMarkerSize(2);
-    transInL[i]->SetMarkerColor(2);
+    L_ERL3[l] = Conf::evt_bgo->GetERL3(l);
+    etInL[l] = Conf::evt_bgo->GetTotalEnergy(l) / totalE;
+    L_g[l] = Conf::evt_bgo->GetGValue(l);
+    layerID[l]  = l;
+    DmpBgoFiredBar *b = Conf::evt_bgo->GetEMaxBarInLayer(l);
+    if(b){
+      L_EOfSeedBar[l] = b->fE / totalE;
+    }else{
+      L_EOfSeedBar[l] =0;
+    }
+    L_Fractal[l] = Conf::evt_bgo->GetFractal(l,1,4);
+    L_firedBarNo[l] = Conf::evt_bgo->GetFiredBarNumber(l);
   }
 
-  for(int ievt=0;ievt<Conf::nEvts;++ievt){
-    Conf::chain->GetEntry(ievt);
-    double etInL[BGO_LayerNO]={0};
-    for(int i=0;i<BGO_LayerNO;++i){
-      etInL[i] = Conf::evt_bgo->GetTotalEnergy(i);
-    }
-    for(int ic = 0;ic < Conf::evt_bgo->fClusters->GetEntriesFast();++ic){
-      DmpEvtBgoCluster *aC = dynamic_cast<DmpEvtBgoCluster*>(Conf::evt_bgo->fClusters->At(ic));
-      int lid = aC->fLayer;
-      for(int b = 0;b<aC->fFiredBar->GetEntriesFast();++b){
-        DmpBgoFiredBar *aB = dynamic_cast<DmpBgoFiredBar*>(aC->fFiredBar->At(b));
-        transInL[lid]->Fill(aB->fBar,aB->fE / etInL[lid]);
-      }
-    }
-  }
+  Conf::can.push_back(new TCanvas("Display_"+name,"Display_"+name));
+  TCanvas *c0 = Conf::can[Conf::can.size()-1];
+  gStyle->SetOptStat("");
+  c0->Divide(1,2);
+  c0->cd(1)->Divide(1,2,0,0);
+  c0->cd(1)->cd(1);
+  gPad->SetGrid();
+  xz->Draw("colz");
+  c0->cd(1)->cd(2);
+  gPad->SetGrid();
+  yz->Draw("colz");
 
-  Conf::can.push_back(new TCanvas("Display_trans"+cName,"Display_Trans_"+cName));
+  c0->cd(2);
+  TGraph *eInL = new TGraph(BGO_LayerNO,layerID,etInL);
+  gPad->SetGrid();
+  eInL->SetTitle("Energy profile;layer ID; E ratio");
+  Fig::SetAxis(eInL->GetHistogram());
+  Fig::SetMarker(eInL,30,2);
+  eInL->Draw();
+
+  TGraph *ESeedInL = new TGraph(BGO_LayerNO,layerID,L_EOfSeedBar);
+  ESeedInL->SetTitle("E of Seed Bar profile;layer ID;E ratio");
+  gPad->SetGrid();
+  Fig::SetAxis(ESeedInL->GetHistogram());
+  Fig::SetMarker(ESeedInL,26,4);
+  ESeedInL->Draw("same pl");
+
+  double lCoG = Conf::evt_bgo->GetLayerIDOfCoG();
+  TLine *li = new TLine(lCoG,0,lCoG,0.3);
+  li->SetLineColor(kRed);
+  li->SetLineWidth(2);
+  li->Draw();
+
+  double lTMax = Conf::evt_bgo->GetLayerIDOfMaxE();
+  TLine *li2 = new TLine(lTMax,0,lTMax,0.3);
+  li2->SetLineColor(kBlue);
+  li2->SetLineWidth(2);
+  li2->Draw();
+
+  TLegend *l = Steer::GetNewLegend();
+  l->AddEntry(eInL,"E ratio","p");
+  l->AddEntry(ESeedInL,"E ratio of seed bar","p");
+  l->Draw();
+
+  Conf::can.push_back(new TCanvas("Display_trans"+name,"Display_Trans_"+name));
   TCanvas *c1 = Conf::can[Conf::can.size()-1];
-  c1->Divide(2,7,0,0);
-  Conf::can.push_back(new TCanvas("Display_transo_pro"+cName,"Display_Trans_Pro"+cName));
-  TCanvas *c2 = Conf::can[Conf::can.size()-1];
-  c2->Divide(2,7,0,0);
+  c1->Divide(2,2);
+  c1->cd(1);
+  TGraph *RMSInL = new TGraph(BGO_LayerNO,layerID,Conf::evt_bgo->fRMS);
+  RMSInL->SetTitle("RMS profile;layer ID;RMS");
+  gPad->SetGrid();
+  Fig::SetAxis(RMSInL->GetHistogram());
+  Fig::SetMarker(RMSInL,33,2);
+  RMSInL->Draw();
 
-  for(int i=0;i<BGO_LayerNO;++i){
-    c1->cd(i+1);
-    transInL[i]->Draw();
-    c2->cd(i+1);
-    transInL[i]->ProfileX()->Draw();
-  }
+  c1->cd(2);
+  TGraph *FInL = new TGraph(BGO_LayerNO,layerID,Conf::evt_bgo->fFValue);
+  FInL->SetTitle("F value profile ;layer ID;F");
+  gPad->SetGrid();
+  Fig::SetAxis(FInL->GetHistogram());
+  Fig::SetMarker(FInL,29,4);
+  FInL->Draw();
+
+  c1->cd(3);
+  TGraph *GInL = new TGraph(BGO_LayerNO,layerID,L_g);
+  GInL->SetTitle("G value profile;layer ID;G");
+  gPad->SetGrid();
+  Fig::SetAxis(GInL->GetHistogram());
+  Fig::SetMarker(GInL,28,6);
+  GInL->Draw();
+  //gStyle->SetOptStat(0);
+
+  c1->cd(4);
+  TGraph *FracInL = new TGraph(BGO_LayerNO,layerID,L_Fractal);
+  FracInL->SetTitle("Fractal14;layer ID;F14");
+  gPad->SetGrid();
+  Fig::SetAxis(FracInL->GetHistogram());
+  Fig::SetMarker(FracInL,23,3);
+  FracInL->Draw();
+
+  Conf::can.push_back(new TCanvas("Display_trans2"+name,"Display_Trans_"+name));
+  TCanvas *c2 = Conf::can[Conf::can.size()-1];
+  c2->Divide(2,2);
+
+  c2->cd(1);
+  TGraph *ERL3InL = new TGraph(BGO_LayerNO,layerID,L_ERL3);
+  ERL3InL->SetTitle("ERL3 profile;layer ID;ERL3");
+  gPad->SetGrid();
+  Fig::SetAxis(ERL3InL->GetHistogram());
+  Fig::SetMarker(ERL3InL,21,4);
+  ERL3InL->Draw();
+  //ESeedInL->Draw("same pl");
+
+  c2->cd(2);
+  TGraph *FBNoInL = new TGraph(BGO_LayerNO,layerID,L_firedBarNo);
+  FBNoInL->SetTitle("fired bar No. profile;layer ID;fired bars");
+  gPad->SetGrid();
+  Fig::SetAxis(FBNoInL->GetHistogram());
+  Fig::SetMarker(FBNoInL,27,4);
+  FBNoInL->Draw();
 }
+
+void DrawEvent(TString selection)
+{
+  TTree *t = Conf::LinkTree()->CopyTree(selection);
+  t->SetBranchAddress("Bgo",&Conf::evt_bgo);
+  long entries = t->GetEntries();
+
+  for(long i=0;i<entries;++i){
+    DrawThisEvent(i);
+  }
+
+}
+//-------------------------------------------------------------------
+//-------------------------------------------------------------------
+
 
 //-------------------------------------------------------------------
-TProfile *RMSFValueProfile(bool skipMips = true)
-//TProfile *RMSFValueProfile(bool skipMips = true ,TCut cuts=Cuts::GlobalCut)
+//-------------------------------------------------------------------
+TProfile* EProfile(TString selection,bool use2D=false)
 {
     TString cName = "c";
           cName +=Conf::can.size();
-          cName +="RFG_In_Layer";
+          cName +="-ERatio_In_Layer_";
+          cName += selection;
           TString tmp = Conf::inputFileName[Conf::inputFileName.size()-1];
           tmp.Remove(0,tmp.Last('/')+1);
           tmp.Remove(tmp.Last('.'),tmp.Length());
           cName +="--"+tmp;
 
-    TH2D *RMSInL = new TH2D(cName+"RMS","RMS_layer / RMS_max",14,0,14,11000,0,1.1);
-    TH2D *FInL = new TH2D(cName+"FValue","FValue_layer / F_max",14,0,14,11000,0,1.1);
-    TH2D *GInL = new TH2D(cName+"GValue","GValue_layer / G_max",14,0,14,11000,0,1.1);
-    for(int ievt=0;ievt<Conf::nEvts;++ievt){
-      Conf::chain->GetEntry(ievt);
-      if(Cuts::IsVerticalMips() && skipMips){
-        continue;
-      }
-      double MaxRMS = Conf::evt_bgo->GetMaxRMS();
-      double MaxFV = Conf::evt_bgo->GetMaxFValue();
-      double MaxGV = Conf::evt_bgo->GetMaxGValue();
+    TH2D *ERatioInL = new TH2D(cName+"E ratio","E ratio in layer;layer ID;E ratio",14,0,14,1000,0,1);
+
+    TTree *t = Conf::LinkTree()->CopyTree(selection);
+    t->SetBranchAddress("Bgo",&Conf::evt_bgo);
+    long entries = t->GetEntries();
+    cout<<"\t\tchoosed events:\t"<<entries<<endl;
+
+    for(int ievt=0;ievt<entries;++ievt){
+      t->GetEntry(ievt);
+      double eT = Conf::evt_bgo->GetTotalEnergy();
       for(int i=0;i<BGO_LayerNO;++i){
-        if(Conf::evt_bgo->fRMS[i]>=0){
-          RMSInL->Fill(i,Conf::evt_bgo->fRMS[i]/MaxRMS);
-          FInL->Fill(i,Conf::evt_bgo->fFValue[i]/MaxFV);
-          if(Conf::evt_bgo->fRMS[i]!=0)GInL->Fill(i,Conf::evt_bgo->GetGValue(i)/MaxGV);
+        if(Conf::evt_bgo->GetTotalEnergy(i) > 0){
+          ERatioInL->Fill(i,Conf::evt_bgo->GetTotalEnergy(i)/eT);
         }
       }
     }
 
     Conf::can.push_back(new TCanvas(cName,cName));
-    TCanvas *c = Conf::can[Conf::can.size()-1];
+    gPad->SetGrid();
+    TProfile *ERatioInL_proX = ERatioInL->ProfileX();
+    ERatioInL_proX->GetYaxis()->SetTitle("E Ratio");
+    Fig::SetMarker(ERatioInL_proX,28,2,1);
+    Fig::SetAxis(ERatioInL_proX);
+    gStyle->SetOptStat("");
+    if(use2D){
+      ERatioInL->Draw("colz");
+    }else{
+      ERatioInL_proX->Draw("e");
+    }
 
-    c->Divide(1,3,0,0);
-    c->cd(1);
+    return ERatioInL_proX;
+}
+
+TProfile* RMSProfile(TString selection,bool use2D=false)
+{
+    TString cName = "c";
+          cName +=Conf::can.size();
+          cName +="-RMS_In_Layer_";
+          cName += selection;
+          TString tmp = Conf::inputFileName[Conf::inputFileName.size()-1];
+          tmp.Remove(0,tmp.Last('/')+1);
+          tmp.Remove(tmp.Last('.'),tmp.Length());
+          cName +="--"+tmp;
+
+    TH2D *RMSInL = new TH2D(cName+"RMS","RMS_layer;layer ID;RMS",14,0,14,11000,0,20);
+
+    TTree *t = Conf::LinkTree()->CopyTree(selection);
+    t->SetBranchAddress("Bgo",&Conf::evt_bgo);
+    long entries = t->GetEntries();
+    cout<<"\t\tchoosed events:\t"<<entries<<endl;
+
+    for(int ievt=0;ievt<entries;++ievt){
+      t->GetEntry(ievt);
+      for(int i=0;i<BGO_LayerNO;++i){
+        if(Conf::evt_bgo->GetTotalEnergy(i) > 0){
+          RMSInL->Fill(i,Conf::evt_bgo->fRMS[i]);
+        }
+      }
+    }
+
+    Conf::can.push_back(new TCanvas(cName,cName));
     gPad->SetGrid();
-    RMSInL->SetMarkerStyle(6);
-    RMSInL->Draw();
     TProfile *RMSInL_proX = RMSInL->ProfileX();
-    RMSInL_proX->SetMarkerStyle(30);
-    RMSInL_proX->SetMarkerSize(2);
-    RMSInL_proX->SetMarkerColor(2);
-    RMSInL_proX->SetLineWidth(2);
-    RMSInL_proX->SetLineColor(2);
-    RMSInL_proX->Draw("esame");
-    c->cd(2);
-    gPad->SetGrid();
-    FInL->SetMarkerStyle(6);
-    FInL->Draw();
-    TProfile *FInL_proX = FInL->ProfileX();
-    FInL_proX->SetMarkerStyle(30);
-    FInL_proX->SetMarkerSize(2);
-    FInL_proX->SetMarkerColor(2);
-    FInL_proX->SetLineWidth(2);
-    FInL_proX->SetLineColor(2);
-    FInL_proX->Draw("samee");
-    c->cd(3);
-    gPad->SetGrid();
-    GInL->SetMarkerStyle(6);
-    GInL->Draw();
-    TProfile *GInL_proX = GInL->ProfileX();
-    GInL_proX->SetMarkerStyle(30);
-    GInL_proX->SetMarkerSize(2);
-    GInL_proX->SetMarkerColor(2);
-    GInL_proX->SetLineWidth(2);
-    GInL_proX->SetLineColor(2);
-    GInL_proX->Draw("sameeg");
+    RMSInL_proX->GetYaxis()->SetTitle("RMS");
+    Fig::SetMarker(RMSInL_proX,23,2,1);
+    Fig::SetAxis(RMSInL_proX);
+    gStyle->SetOptStat("");
+    if(use2D){
+      RMSInL->Draw("colz");
+    }else{
+      RMSInL_proX->Draw("e");
+    }
+
     return RMSInL_proX;
 }
 
+TProfile* FProfile(TString selection,bool use2D=false)
+{
+    TString cName = "c";
+          cName +=Conf::can.size();
+          cName +="-F_In_Layer_";
+          cName += selection;
+          TString tmp = Conf::inputFileName[Conf::inputFileName.size()-1];
+          tmp.Remove(0,tmp.Last('/')+1);
+          tmp.Remove(tmp.Last('.'),tmp.Length());
+          cName +="--"+tmp;
+
+    TH2D *FInL = new TH2D(cName+"FValue","FValue_layer;layer ID; F",14,0,14,1600,0,16);
+
+    TTree *t = Conf::LinkTree()->CopyTree(selection);
+    t->SetBranchAddress("Bgo",&Conf::evt_bgo);
+    long entries = t->GetEntries();
+    cout<<"\t\tchoosed events:\t"<<entries<<endl;
+
+    for(int ievt=0;ievt<entries;++ievt){
+      t->GetEntry(ievt);
+      for(int i=0;i<BGO_LayerNO;++i){
+        if(Conf::evt_bgo->GetTotalEnergy(i) > 0){
+          FInL->Fill(i,Conf::evt_bgo->fFValue[i]);
+        }
+      }
+    }
+
+    Conf::can.push_back(new TCanvas(cName,cName));
+    gPad->SetGrid();
+    TProfile *FInL_proX = FInL->ProfileX();
+    FInL_proX->GetYaxis()->SetTitle("F Value");
+    Fig::SetMarker(FInL_proX,25,2,1);
+    Fig::SetAxis(FInL_proX);
+    gStyle->SetOptStat("");
+    if(use2D){
+      FInL->Draw("colz");
+    }else{
+      FInL_proX->Draw("e");
+    }
+
+    return FInL_proX;
+}
+
+TProfile* GProfile(TString selection,bool use2D=false)
+{
+    TString cName = "c";
+          cName +=Conf::can.size();
+          cName +="-G_In_Layer_";
+          cName += selection;
+          TString tmp = Conf::inputFileName[Conf::inputFileName.size()-1];
+          tmp.Remove(0,tmp.Last('/')+1);
+          tmp.Remove(tmp.Last('.'),tmp.Length());
+          cName +="--"+tmp;
+
+    TH2D *GInL = new TH2D(cName+"GValue","GValue_layer;layer ID;G",14,0,14,500,-50,50);
+
+    TTree *t = Conf::LinkTree()->CopyTree(selection);
+    t->SetBranchAddress("Bgo",&Conf::evt_bgo);
+    long entries = t->GetEntries();
+    cout<<"\t\tchoosed events:\t"<<entries<<endl;
+
+    for(int ievt=0;ievt<entries;++ievt){
+      t->GetEntry(ievt);
+      for(int i=0;i<BGO_LayerNO;++i){
+        if(Conf::evt_bgo->GetTotalEnergy(i) > 0){
+          GInL->Fill(i,Conf::evt_bgo->GetGValue(i));
+        }
+      }
+    }
+
+    Conf::can.push_back(new TCanvas(cName,cName));
+    gPad->SetGrid();
+    TProfile *GInL_proX = GInL->ProfileX();
+    GInL_proX->GetYaxis()->SetTitle("G Value");
+    Fig::SetMarker(GInL_proX,27,2,1);
+    Fig::SetAxis(GInL_proX);
+    gStyle->SetOptStat("");
+    if(use2D){
+      GInL->Draw("colz");
+    }else{
+      GInL_proX->Draw("e");
+    }
+
+    return GInL_proX;
+}
+
+TProfile* FractalProfile(TString selection,int nBar1=1,int nBar2=4,bool use2D=false)
+{
+    TString cName = "c";
+          cName +=Conf::can.size();
+          cName +="-Fratcal_";
+          cName +=nBar1;
+          cName +=nBar2;
+          cName +="_In_Layer_";
+          cName += selection;
+          TString tmp = Conf::inputFileName[Conf::inputFileName.size()-1];
+          tmp.Remove(0,tmp.Last('/')+1);
+          tmp.Remove(tmp.Last('.'),tmp.Length());
+          cName +="--"+tmp;
+
+    TH2D *FraInL = new TH2D(cName+"Fractal",Form("F%d%d_layer;layer ID;F%d%d",nBar1,nBar2,nBar1,nBar2),14,0,14,100,0,1);
+
+    TTree *t = Conf::LinkTree()->CopyTree(selection);
+    t->SetBranchAddress("Bgo",&Conf::evt_bgo);
+    long entries = t->GetEntries();
+    cout<<"\t\tchoosed events:\t"<<entries<<endl;
+
+    for(int ievt=0;ievt<entries;++ievt){
+      t->GetEntry(ievt);
+      for(int i=0;i<BGO_LayerNO;++i){
+        if(Conf::evt_bgo->GetTotalEnergy(i) > 0){
+          FraInL->Fill(i,Conf::evt_bgo->GetFractal(i,nBar1,nBar2));
+        }
+      }
+    }
+
+    Conf::can.push_back(new TCanvas(cName,cName));
+    gPad->SetGrid();
+    TProfile *FraInL_proX = FraInL->ProfileX();
+    FraInL_proX->GetYaxis()->SetTitle(Form("F%d%d Value",nBar1,nBar2));
+    Fig::SetMarker(FraInL_proX,29,2,1);
+    Fig::SetAxis(FraInL_proX);
+    gStyle->SetOptStat("");
+    if(use2D){
+      FraInL->Draw("colz");
+    }else{
+      FraInL_proX->Draw("e");
+    }
+
+    return FraInL_proX;
+}
+
+TProfile* FiredBarNoProfile(TString selection,double eCut = 2.5,bool use2D=false)// 2.5MeV for one bar
+{
+    TString cName = "c";
+          cName +=Conf::can.size();
+          cName +="-FiredBarNo_In_Layer_";
+          cName += selection;
+          TString tmp = Conf::inputFileName[Conf::inputFileName.size()-1];
+          tmp.Remove(0,tmp.Last('/')+1);
+          tmp.Remove(tmp.Last('.'),tmp.Length());
+          cName +="--"+tmp;
+
+    TH2D *FNoInL = new TH2D(cName+"FiredBarNo","FiredBarNo;layer ID; Fired Bar No",14,0,14,16,0,16);
+
+    TTree *t = Conf::LinkTree()->CopyTree(selection);
+    t->SetBranchAddress("Bgo",&Conf::evt_bgo);
+    long entries = t->GetEntries();
+    cout<<"\t\tchoosed events:\t"<<entries<<endl;
+
+    for(int ievt=0;ievt<entries;++ievt){
+      t->GetEntry(ievt);
+      std::vector<int>  nbs = Conf::evt_bgo->GetFiredBarNumbers(eCut);
+      for(int l=0;l<BGO_LayerNO;++l){
+        FNoInL->Fill(l,nbs[l]);
+      }
+    }
+
+    Conf::can.push_back(new TCanvas(cName,cName));
+    gPad->SetGrid();
+    TProfile *FNoInL_proX = FNoInL->ProfileX();
+    FNoInL_proX->GetYaxis()->SetTitle("Fired Bar Number");
+    Fig::SetMarker(FNoInL_proX,25,2,1);
+    Fig::SetAxis(FNoInL_proX);
+    gStyle->SetOptStat("");
+    if(use2D){
+      FNoInL->Draw();
+    }else{
+      FNoInL_proX->Draw("e");
+    }
+
+    return FNoInL_proX;
+}
+
+TProfile* ERL3Profile(TString selection,int type=0,bool use2D=false)
+{
+    TString cName = "c";
+          cName +=Conf::can.size();
+          cName +="-ERL3_In_Layer_";
+          cName += selection;
+          TString tmp = Conf::inputFileName[Conf::inputFileName.size()-1];
+          tmp.Remove(0,tmp.Last('/')+1);
+          tmp.Remove(tmp.Last('.'),tmp.Length());
+          cName +="--"+tmp;
+
+    TH2D *ERL3InL = new TH2D(cName+"ERL3","ERL3;layer ID; ERL3",14,0,14,50,0,1.0);
+
+    TTree *t = Conf::LinkTree()->CopyTree(selection);
+    t->SetBranchAddress("Bgo",&Conf::evt_bgo);
+    long entries = t->GetEntries();
+    cout<<"\t\tchoosed events:\t"<<entries<<endl;
+
+    for(int ievt=0;ievt<entries;++ievt){
+      t->GetEntry(ievt);
+      for(int l=0;l<BGO_LayerNO;++l){
+        ERL3InL->Fill(l,Conf::evt_bgo->GetERL3(l,type));
+      }
+    }
+
+    Conf::can.push_back(new TCanvas(cName,cName));
+    gPad->SetGrid();
+    TProfile *ERL3InL_proX = ERL3InL->ProfileX();
+    ERL3InL_proX->GetYaxis()->SetTitle("ERL3");
+    Fig::SetMarker(ERL3InL_proX,25,2,1);
+    Fig::SetAxis(ERL3InL_proX);
+    gStyle->SetOptStat("");
+    if(use2D){
+      ERL3InL->Draw();
+    }else{
+      ERL3InL_proX->Draw("e");
+    }
+
+    return ERL3InL_proX;
+}
+
+TProfile *TMaxZVSRecoE(TString selection,bool use2D =false)
+{
+    TString cName = "c";
+          cName +=Conf::can.size();
+          cName +="-tmax VS log(RecE)_";
+          cName += selection;
+          TString tmp = Conf::inputFileName[Conf::inputFileName.size()-1];
+          tmp.Remove(0,tmp.Last('/')+1);
+          tmp.Remove(tmp.Last('.'),tmp.Length());
+          cName +="--"+tmp;
+
+    TH2D *TMax_LogE = new TH2D(cName+"TMax_LogE",";Log(E);TMax",1200,8,20,14*10,0,14);
+
+    TTree *t = Conf::LinkTree()->CopyTree(selection);
+    t->SetBranchAddress("Bgo",&Conf::evt_bgo);
+    long entries = t->GetEntries();
+    cout<<"\t\tchoosed events:\t"<<entries<<endl;
+
+    for(int ievt=0;ievt<entries;++ievt){
+      t->GetEntry(ievt);
+      TMax_LogE->Fill(TMath::Log(Conf::evt_bgo->fTotE),Conf::evt_bgo->GetTMax());
+    }
+
+    Conf::can.push_back(new TCanvas(cName,cName));
+    gPad->SetGrid();
+    TProfile *TMax_LogE_proX = TMax_LogE->ProfileX();
+    if(use2D){
+      TMax_LogE->Draw("colz");
+    }else{
+      TMax_LogE_proX->GetYaxis()->SetTitle("TMax");
+      Fig::SetMarker(TMax_LogE_proX,25,2,1);
+      Fig::SetAxis(TMax_LogE_proX);
+      gStyle->SetOptStat("");
+      TMax_LogE_proX->Draw("e");
+      }
+
+    return TMax_LogE_proX;
+}
+
+TProfile *ERatioInLVSRecoE(TString selection,int layerID = -1,bool use2D = false)
+{   // if layer id = -1, use DmpEvtBgoShower::GetERatioAtTail();
+    TString cName = "c";
+          cName +=Conf::can.size();
+          cName +="-ERatio VS log(RecE)_";
+          cName += selection;
+          TString tmp = Conf::inputFileName[Conf::inputFileName.size()-1];
+          tmp.Remove(0,tmp.Last('/')+1);
+          tmp.Remove(tmp.Last('.'),tmp.Length());
+          cName +="--"+tmp;
+
+    TH2D *ER_LogE = new TH2D(cName+"ERatio_LogE",";Log(E);ERatio",1600,8,20,800,0,0.5);
+
+    TTree *t = Conf::LinkTree()->CopyTree(selection);
+    t->SetBranchAddress("Bgo",&Conf::evt_bgo);
+    long entries = t->GetEntries();
+    cout<<"\t\tchoosed events:\t"<<entries<<endl;
+
+    if(layerID == -1){
+      for(int ievt=0;ievt<entries;++ievt){
+        t->GetEntry(ievt);
+        ER_LogE->Fill(TMath::Log(Conf::evt_bgo->fTotE),Conf::evt_bgo->GetERatioAtTail());
+      }
+    }else{
+      for(int ievt=0;ievt<entries;++ievt){
+        t->GetEntry(ievt);
+        ER_LogE->Fill(TMath::Log(Conf::evt_bgo->fTotE),Conf::evt_bgo->GetERatioOfLayer(layerID));
+      }
+    }
+
+    Conf::can.push_back(new TCanvas(cName,cName));
+    gPad->SetGrid();
+    TProfile *ER_LogE_proX = ER_LogE->ProfileX();
+    if(use2D){
+      ER_LogE->Draw("colz");
+    }else{
+      ER_LogE_proX->GetYaxis()->SetTitle("E Ratio");
+      Fig::SetMarker(ER_LogE_proX,25,2,1);
+      Fig::SetAxis(ER_LogE_proX);
+      gStyle->SetOptStat("");
+      ER_LogE_proX->Draw("e");
+    }
+
+    return ER_LogE_proX;
+}
+
+
 //-------------------------------------------------------------------
-void EnergySpectrum(int layer=-1, int barID=-1, TCut cuts=Cuts::GlobalCut)
+//-------------------------------------------------------------------
+
+
+//-------------------------------------------------------------------
+void EnergySpectrum(int layer=-1, int barID=-1, TString cuts=Cut["T0"])
 {
         // (-1,-1) total. (layer, -1) each bar in this layer. (-1,bar) this barID in each layer
   if(layer < 0 && barID < 0){
@@ -400,7 +884,7 @@ void EnergySpectrum(int layer=-1, int barID=-1, TCut cuts=Cuts::GlobalCut)
   }
 }
 
-void Direction(TCut cuts=Cuts::GlobalCut)
+void Direction(TString cuts=Cut["T0"])
 {
   gStyle->SetStatStyle();
   MyDraw("Bgo.GetTrackDirection().Theta()",cuts);
@@ -408,168 +892,135 @@ void Direction(TCut cuts=Cuts::GlobalCut)
   MyDraw("Bgo.GetTrackDirection().Theta():Bgo.fTotE",cuts,"*");
 }
 
-void EntryPoint(TCut cuts = Cuts::VerticalMips)
+void EntryPoint(TString cuts = Cut["Mips2"])
 {
   MyDraw("Bgo.GetEntryPoint().y():Bgo.GetEntryPoint().x()",cuts,"colz");
 }
 
-void EntryBarID(TCut cuts = Cuts::VerticalMips)
+void EntryBarID(TString cuts = Cut["Mips2"]) 
 {
   MyDraw("Bgo.GetCoGBarIDInLayer(0):Bgo.GetCoGBarIDInLayer(1)",cuts,"colz");
 }
 
-//void // GValue by layer TH2D
-// RMS value by layer,  RMS2RMSTotal by layer
-
-void DrawThisEvent(long evtID)
-{
-  TString name = "EventID_";
-          name += evtID;
-          TString tmp = Conf::inputFileName[Conf::inputFileName.size()-1];
-          tmp.Remove(0,tmp.Last('/')+1);
-          tmp.Remove(tmp.Last('.'),tmp.Length());
-          name +="--"+tmp;
-  TH2F *xz =  new TH2F("XZ_"+name,"XZ",14,0,14,22,0,22);  xz->GetXaxis()->SetTitle("layer ID");   xz->GetYaxis()->SetTitle("bar ID");
-  TH2F *yz =  new TH2F("YZ_"+name,"YZ",14,0,14,22,0,22);  yz->GetXaxis()->SetTitle("layer ID");   yz->GetYaxis()->SetTitle("bar ID");
-  TH2D *eInL = new TH2D("energy profile"+name,"E_layer / E_total;layer ID;E_l/E_t",14,0,14,5000,0,0.5);
-  vector<TH2D*> transInL(BGO_LayerNO);
-
-  Conf::LinkTree()->GetEntry(evtID);
-
-  cout<<"\n\n\tEvent ID "<<evtID<<endl;
-  Conf::evt_bgo->MyPrint();
-
-  double etInL[BGO_LayerNO]={0};
-  for(int i=0;i<BGO_LayerNO;++i){
-    etInL[i] = Conf::evt_bgo->GetTotalEnergy(i);
-    TH2D *h = 0;
-    if(etInL[i]>5){
-      h = new TH2D(Form("layer %d",i)+name,Form("layer %d;BarID;EnergyRotaio",i),22,0,22,1000,0,1);
-      h->SetMarkerColor(2);
-      h->SetMarkerStyle(29);
-    }
-    transInL[i] = h;
-  }
-  for(int ic = 0;ic < Conf::evt_bgo->fClusters->GetEntriesFast();++ic){
-    DmpEvtBgoCluster *aC = dynamic_cast<DmpEvtBgoCluster*>(Conf::evt_bgo->fClusters->At(ic));
-    int lid = aC->fLayer;
-    for(int b = 0;b<aC->fFiredBar->GetEntriesFast();++b){
-      DmpBgoFiredBar *aB = dynamic_cast<DmpBgoFiredBar*>(aC->fFiredBar->At(b));
-      if(lid % 2 == 0){
-        yz->Fill(lid,aB->fBar,aB->fE/Conf::evt_bgo->fTotE);
-      }else{
-        xz->Fill(lid,aB->fBar,aB->fE/Conf::evt_bgo->fTotE);
-      }
-      if(transInL[lid]){
-        transInL[lid]->Fill(aB->fBar,aB->fE / etInL[lid]);
-      }
-    }
-  }
-  double MaxRMS = Conf::evt_bgo->GetMaxRMS();
-  double MaxFV = Conf::evt_bgo->GetMaxFValue();
-  double MaxGV = Conf::evt_bgo->GetMaxGValue();
-  double L_rms[BGO_LayerNO];
-  double L_f[BGO_LayerNO];
-  double L_g[BGO_LayerNO];
-  double layerID[BGO_LayerNO];
-  for(int i=0;i<BGO_LayerNO;++i){
-    eInL->Fill(i,Conf::evt_bgo->GetTotalEnergy(i)/ Conf::evt_bgo->fTotE);
-    if(Conf::evt_bgo->fRMS[i] >=0){
-      L_rms[i] = Conf::evt_bgo->fRMS[i] / MaxRMS;
-      L_f[i] = Conf::evt_bgo->fFValue[i] / MaxFV;
-      L_g[i] = Conf::evt_bgo->GetGValue(i) / MaxGV;
-    }else{
-      L_rms[i] = L_f[i] = L_g[i] = Conf::evt_bgo->fRMS[i];
-    }
-    layerID[i]  = i;
-  }
-
-  Conf::can.push_back(new TCanvas("Display_"+name,"Display_"+name));
-  TCanvas *c0 = Conf::can[Conf::can.size()-1];
-  c0->Divide(1,2);
-  c0->cd(1)->Divide(2,1);
-  c0->cd(1)->cd(1)->Divide(1,2,0,0);
-  c0->cd(1)->cd(1)->cd(1); gPad->SetGrid(); xz->Draw("colz");
-  c0->cd(1)->cd(1)->cd(2); gPad->SetGrid(); yz->Draw("colz");
-  c0->cd(1)->cd(2); gPad->SetGrid(); eInL->SetMarkerStyle(30);  eInL->Draw();
-  c0->cd(2); gPad->SetGrid();
-  TMultiGraph *mg = new TMultiGraph();
-  TLegend *lg = new TLegend(0.55,0.65,0.66,0.82);
-
-  TGraph *RMSInL = new TGraph(BGO_LayerNO,layerID,L_rms);
-  RMSInL->SetMarkerStyle(33);
-  RMSInL->SetMarkerColor(2);
-  mg->Add(RMSInL);
-  lg->AddEntry(RMSInL,"RMS_layer / RMS_max");
-
-  TGraph *FInL = new TGraph(BGO_LayerNO,layerID,L_f);
-  FInL->SetMarkerStyle(29);
-  FInL->SetMarkerColor(4);
-  mg->Add(FInL);
-  lg->AddEntry(FInL,"F_layer / F_max");
-
-  TGraph *GInL = new TGraph(BGO_LayerNO,layerID,L_g);
-  GInL->SetMarkerStyle(28);
-  GInL->SetMarkerColor(6);
-  mg->Add(GInL);
-  lg->AddEntry(GInL,"G_layer / G_max");
-  mg->Draw("apl");
-  lg->Draw("same");
-  //gStyle->SetOptStat(0);
-  Conf::can.push_back(new TCanvas("Display_trans"+name,"Display_Trans_"+name));
-  TCanvas *c1 = Conf::can[Conf::can.size()-1];
-  c1->Divide(2,7,0,0);
-
-  for(int i=0;i<BGO_LayerNO;++i){
-    c1->cd(i+1);
-    if(transInL[i]){
-      transInL[i]->Draw();
-    }
-  }
-
-}
-
-void DrawEventByEnergy(double e0,double e1)
-{
-  for(long i=0;i<Conf::nEvts;++i){
-    Conf::LinkTree()->GetEntry(i);
-    if(Conf::evt_bgo->fTotE >= e0 && Conf::evt_bgo->fTotE <= e1){
-      DrawThisEvent(i);
-    }
-  }
-}
-
-void DrawEventByCondition(bool con)
-{
-// *
-// *  TODO:  not finish...
-//              How does root recongnize TCut which is a string??
-// *
-
-  for(long i=0;i<Conf::nEvts;++i){
-    Conf::LinkTree()->GetEntry(i);
-    if(con){
-      DrawThisEvent(i);
-    }
-  }
-}
-
 namespace Compare
 {
-void EGInLayer(TString electronFile, TString hadronFile,double low_e,double up_e,TCut cuts="")
+
+TLegend* Style(TH1* ele, TH1 *pro,TString tagE,TString tagP)
 {
-  for(int lid=0;lid<BGO_LayerNO;++lid){
-    Plot::ResetInputFile(electronFile);
-    MyDraw(Form("Bgo.GetTotalEnergy(%d)/Bgo.fTotE : Bgo.GetGValue(%d)",lid,lid),Form("Bgo.GetTotalEnergy(%d)>5",lid) && cuts);
-    Plot::ResetInputFile(hadronFile);
-    MyDraw(Form("Bgo.GetTotalEnergy(%d)/Bgo.fTotE : Bgo.GetGValue(%d)",lid,lid),Form("Bgo.fTotE > %f && Bgo.fTotE<%f && Bgo.GetTotalEnergy(%d)>5",low_e,up_e,lid)&&cuts,"same*");
-  }
-  for(int lid=0;lid<BGO_LayerNO;++lid){
-    Plot::ResetInputFile(electronFile);
-    MyDraw(Form("Bgo.fFValue[%d] : Bgo.GetGValue(%d)",lid,lid),Form("Bgo.GetTotalEnergy(%d)>5",lid)&&cuts);
-    Plot::ResetInputFile(hadronFile);
-    MyDraw(Form("Bgo.fFValue[%d] : Bgo.GetGValue(%d)",lid,lid),Form("Bgo.fTotE > %f && Bgo.fTotE<%f && Bgo.GetTotalEnergy(%d)>5",low_e,up_e,lid)&&cuts,"same*");
-  }
+  Fig::SetMarker(ele,28,kBlue,1.5);
+  Fig::SetMarker(pro,29,kRed,1.5);
+
+  TLegend *l = Plot::Steer::GetNewLegend();
+  l->AddEntry(ele,tagE,"lp");
+  l->AddEntry(pro,tagP,"lp");
+
+  return l;
+}
+
+void CreateCanvas(TString tag,TString eF,TString pF,TString eCut,TString pCut)
+{
+  TString cName = "c";
+        cName +=Conf::can.size();
+        cName +="-"+tag+"_";
+        cName += eCut;
+        TString tmp = eF;
+        tmp.Remove(0,tmp.Last('/')+1);
+        tmp.Remove(tmp.Last('.'),tmp.Length());
+        cName +="--"+tmp+"--";
+
+        cName += pCut;
+        tmp = pF;
+        tmp.Remove(0,tmp.Last('/')+1);
+        tmp.Remove(tmp.Last('.'),tmp.Length());
+        cName +="--"+tmp;
+
+  Conf::can.push_back(new TCanvas(cName,cName));
+  gPad->SetGrid();
+}
+
+void ThisValue(TString expre,TString electronFile, TString hadronFile,TString electronCut,TString protonCut,TString tagE="150GeV electron",TString tagP = "400GeV proton")
+{
+  Plot::ResetInputFile(electronFile);
+  MyDraw(expre,electronCut);
+  Plot::ResetInputFile(hadronFile);
+  MyDraw(expre,protonCut,"same");
+//void MyDraw(TString exp, TString cuts= Cut["T0"], TString opt="")
+}
+
+TLegend* EProfile(TString electronFile, TString hadronFile,TString electronCut,TString protonCut,TString tagE="150GeV electron",TString tagP = "400GeV proton")
+{
+  Plot::ResetInputFile(electronFile);
+  TProfile *e=Plot::EProfile(electronCut);
+  Plot::ResetInputFile(hadronFile);
+  TProfile *p=Plot::EProfile(protonCut);
+
+  CreateCanvas("E Profile",electronFile,hadronFile,electronCut,protonCut);
+  TLegend *l = Style(e,p,tagE,tagP);
+
+  e->Draw("e");
+  p->Draw("esame");
+  l->Draw();
+  return l;
+}
+
+void RMSProfile(TString electronFile, TString hadronFile,TString electronCut,TString protonCut,TString tagE="150GeV electron",TString tagP = "400GeV proton")
+{
+  Plot::ResetInputFile(electronFile);
+  TProfile *e=Plot::RMSProfile(electronCut);
+  Plot::ResetInputFile(hadronFile);
+  TProfile *p=Plot::RMSProfile(protonCut);
+
+  CreateCanvas("RMS Profile",electronFile,hadronFile,electronCut,protonCut);
+  TLegend *l =Style(e,p,tagE,tagP);
+
+  e->Draw();
+  p->Draw("same");
+  l->Draw();
+}
+
+void GProfile(TString electronFile, TString hadronFile,TString electronCut,TString protonCut,TString tagE="150GeV electron",TString tagP = "400GeV proton")
+{
+  Plot::ResetInputFile(electronFile);
+  TProfile *e=Plot::GProfile(electronCut);
+  Plot::ResetInputFile(hadronFile);
+  TProfile *p=Plot::GProfile(protonCut);
+
+  CreateCanvas("G Profile",electronFile,hadronFile,electronCut,protonCut);
+  TLegend *l =Style(e,p,tagE,tagP);
+
+  e->Draw();
+  p->Draw("same");
+  l->Draw();
+}
+
+void FProfile(TString electronFile, TString hadronFile,TString electronCut,TString protonCut,TString tagE="150GeV electron",TString tagP = "400GeV proton")
+{
+  Plot::ResetInputFile(electronFile);
+  TProfile *e=Plot::FProfile(electronCut);
+  Plot::ResetInputFile(hadronFile);
+  TProfile *p=Plot::FProfile(protonCut);
+
+  CreateCanvas("F Profile",electronFile,hadronFile,electronCut,protonCut);
+  TLegend *l =Style(e,p,tagE,tagP);
+
+  p->Draw();
+  e->Draw("same");
+  l->Draw();
+}
+
+void FractalProfile(TString electronFile, TString hadronFile,TString electronCut,TString protonCut,TString tagE="150GeV electron",TString tagP = "400GeV proton",int nBar1=1,int nBar2=4)
+{
+  Plot::ResetInputFile(electronFile);
+  TProfile *e=Plot::FractalProfile(electronCut,nBar1,nBar2);
+  Plot::ResetInputFile(hadronFile);
+  TProfile *p=Plot::FractalProfile(protonCut,nBar1,nBar2);
+
+  CreateCanvas(Form("F%d%d Profile",nBar1,nBar2),electronFile,hadronFile,electronCut,protonCut);
+  TLegend *l =Style(e,p,tagE,tagP);
+
+  e->Draw();
+  p->Draw("same");
+  l->Draw();
 }
 
 };
@@ -601,6 +1052,7 @@ TH1D *ESpectrumOfIsolatedBar(int layerID,int BarID,double E_low, double E_high,d
   h1D_aIos->SetLabelSize(0.05,"X");
   h1D_aIos->SetLabelSize(0.05,"Y");
 
+  std::vector<int> iL; iL.push_back(layerID);
   for(long i=0;i<Conf::nEvts;++i){
     Conf::LinkTree()->GetEntry(i);
     if(!Conf::evt_bgo->Group3_0000(0.2)){
@@ -609,18 +1061,13 @@ TH1D *ESpectrumOfIsolatedBar(int layerID,int BarID,double E_low, double E_high,d
     if(Conf::evt_bgo->fTotE < TotEnergyCut){
       continue;
     }
-    for(int iL = 0;iL<BGO_LayerNO;++iL){
-      std::vector<DmpBgoFiredBar*>  isoBars = Conf::evt_bgo->GetIsolatedBar(iL);
+      std::vector<DmpBgoFiredBar*>  isoBars = Conf::evt_bgo->GetIsolatedBar(iL,E_low,E_high);
       for(unsigned int i=0;i<isoBars.size();++i){
-        if(isoBars[i]->fLayer != layerID || isoBars[i]->fBar != BarID){
-          continue;
-        }
         double e = isoBars[i]->fE;
-        if(e >E_low && e <E_high){
+        if(isoBars[i]->fBar == BarID){
           h1D_aIos->Fill(e);
         }
       }
-    }
   }
   return h1D_aIos;
 }
@@ -635,6 +1082,7 @@ void DrawESpecOfIoslatedBar(int layerID,double E_low=18,double E_high=30,double 
           tmp.Remove(0,tmp.Last('/')+1);
           tmp.Remove(tmp.Last('.'),tmp.Length());
           cName +="--"+tmp;
+
   TCanvas *c = new TCanvas(cName,cName);
   Conf::can.push_back(c);
   c->Divide(4,6);
@@ -747,6 +1195,11 @@ void HowManyIsolateBarFit(double TotEnergyCut_low = 0,double TotEnergyCut_hi = 5
 
   long passTrigger = 0;
   long inTotERange = 0;
+ 
+  std::vector<int>  lIDs;
+  for(int l=fromLayerID;l<BGO_LayerNO;++l ){
+    lIDs.push_back(l);
+  }
 
   for(long ievt=0;ievt<Conf::nEvts;++ievt){
     Conf::LinkTree()->GetEntry(ievt);
@@ -761,7 +1214,7 @@ void HowManyIsolateBarFit(double TotEnergyCut_low = 0,double TotEnergyCut_hi = 5
     std::vector<int>  isoLayerID;
     std::vector<int>  isoBarsID;
     std::vector<double>  isoEnergy;
-    std::vector<DmpBgoFiredBar*>  isoBars = Conf::evt_bgo->GetIsolatedBarFromLayer(fromLayerID,Noise_E0);
+    std::vector<DmpBgoFiredBar*>  isoBars = Conf::evt_bgo->GetIsolatedBar(lIDs,Noise_E0);
     int nisobar = isoBars.size();
     for(int ib=0;ib<nisobar;++ib){
       isoLayerID.push_back(isoBars[ib]->fLayer);
@@ -901,6 +1354,11 @@ void IsolatedBar(double eRangeLo=5, double eRangeHi = 10000, int layerCut = 4,do
   h1D_E120MeV->SetMarkerStyle(7);
   h1D_E20MeV->SetMarkerStyle(5);
 
+  std::vector<int>  lIDs;
+  for(int l=layerCut;l<BGO_LayerNO;++l ){
+    lIDs.push_back(l);
+  }
+
   for(long i=0;i<Conf::nEvts;++i){
     Conf::LinkTree()->GetEntry(i);
     if(!Conf::evt_bgo->Group3_0000(0.2)){
@@ -913,11 +1371,11 @@ void IsolatedBar(double eRangeLo=5, double eRangeHi = 10000, int layerCut = 4,do
             // Mips cut
       continue; 
     }
-    if(Cuts::IsVerticalMips()){
-      continue;
-    }
+    //if(Cuts::IsVerticalMips()){
+    //  continue;
+    //}
 
-      std::vector<DmpBgoFiredBar*>  isoBars = Conf::evt_bgo->GetIsolatedBarFromLayer(layerCut,eCut);
+      std::vector<DmpBgoFiredBar*>  isoBars = Conf::evt_bgo->GetIsolatedBar(lIDs,eCut);
       for(unsigned int i=0;i<isoBars.size();++i){
         double e = isoBars[i]->fE;
         h3d_EOfIsoBar->Fill(isoBars[i]->fLayer,isoBars[i]->fBar,e);
@@ -1006,7 +1464,8 @@ void LongitudinalDevelopment(double TotEnergyCut_low = 0,double TotEnergyCut_hi 
     }
     ++inTotERange;
     for(int l=0;l<BGO_LayerNO;++l){
-      std::vector<DmpBgoFiredBar*>  isoBars = Conf::evt_bgo->GetIsolatedBar(l,E_low,E_high,Noise_E0);
+      std::vector<int>  lxx; lxx.push_back(l);
+      std::vector<DmpBgoFiredBar*>  isoBars = Conf::evt_bgo->GetIsolatedBar(lxx,E_low,E_high,Noise_E0);
       int nB = isoBars.size();
       h2D_NBars_LID->Fill(l,nB);
       if(nB == 0){
@@ -1087,14 +1546,19 @@ void BarNumbers(double TotEnergyCut_low =3000, double TotEnergyCut_hi = 5000,dou
       continue;
     }
     ++inTotERange;
-    std::vector<DmpBgoFiredBar*>  allEvt = Conf::evt_bgo->GetIsolatedBarFromLayer(0,Noise_E0);
+    std::vector<int> lxx;
+    for(int l=0;l<BGO_LayerNO;++l){
+      lxx.push_back(l);
+    }
+    std::vector<DmpBgoFiredBar*>  allEvt = Conf::evt_bgo->GetIsolatedBar(lxx,Noise_E0);
     double allIsoBars = allEvt.size();
     h1D_TotNO->Fill(allIsoBars);
     for(int l=0;l<BGO_LayerNO;++l){
-      std::vector<DmpBgoFiredBar*>  allIsoL = Conf::evt_bgo->GetIsolatedBar(l,Noise_E0);
+      std::vector<int>  l2l;l2l.push_back(l);
+      std::vector<DmpBgoFiredBar*>  allIsoL = Conf::evt_bgo->GetIsolatedBar(l2l,Noise_E0);
       int nal = allIsoL.size();
       h2D_TotNo_LID->Fill(l,nal / allIsoBars);
-      std::vector<DmpBgoFiredBar*>  allIsoLL20MeV = Conf::evt_bgo->GetIsolatedBar(l,Noise_E0,20,Noise_E0);
+      std::vector<DmpBgoFiredBar*>  allIsoLL20MeV = Conf::evt_bgo->GetIsolatedBar(l2l,Noise_E0,20,Noise_E0);
       int n = allIsoLL20MeV.size();
       h2D_NoL20MeV_LID->Fill(l,n / allIsoBars);
       h2D_NoH20MeV_LID->Fill(l,(nal-n) / allIsoBars);

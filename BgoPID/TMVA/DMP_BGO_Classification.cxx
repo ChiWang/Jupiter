@@ -30,14 +30,15 @@
 #include <cstdlib>
 #include <iostream>
 #include <map>
+#include <vector>
 #include <string>
 
-//#include "TChain.h"
+#include "TChain.h"
 #include "TFile.h"
 #include "TTree.h"
 #include "TString.h"
-#include "TObjString.h"
-#include "TSystem.h"
+//#include "TObjString.h"
+//#include "TSystem.h"
 #include "TROOT.h"
 #include "TMVAGui.C"
 
@@ -52,6 +53,44 @@
 #include "DmpEvtHeader.h"
 
 #define __treeName  "/Event/Rec0"
+
+namespace Conf
+{
+  std::vector<TString>  signalFiles(1,"./MC_eletron-150GeV_P43-Evts32000.root");
+  std::vector<TString>  backgroundFiles(1,"./MC_proton-400GeV_P43-Evts72200.root");
+  //signalFiles.push_back("./MC_eletron-150GeV_P43-Evts32000.root");
+  //backgroundFiles.push_back("./MC_proton-400GeV_P43-Evts72200.root");
+
+  TString myMethodList = "MLP,MLPBNN,BDTG,BDT";
+  TString outputFileName = "TMVA.root";//myMethodList+"__TMVA";
+
+   // Apply additional cuts on the signal and background samples (can be different)
+   TCut T0 = "Bgo.T0()";
+   TCut Trig3_0000 = "Bgo.Group3_0000(0.2)";
+   TCut MipsCut = "Bgo.fTotE > 200 && Bgo.fTotE <450 && Bgo.fLRMS > 3.6 && Bgo.fLRMS < 4.4 && Bgo.GetTotalRMS()>-2 && Bgo.GetTotalRMS()<2";
+   TCut SignalCut = "";
+   TCut BackgroundCut = "Bgo.fTotE > 135000 && Bgo.fTotE< 150000";
+   void BackgroundERange(double eLow,double eHigh){
+      BackgroundCut = Form("Bgo.fTotE > %f && Bgo.fTotE< %f",eLow,eHigh);
+   }
+   //TCut mycutc = "Bgo.fTotE >3400 && Bgo.fTotE < 4000"; // for example: TCut BackgroundCut = "abs(var1)<0.5";
+   //TCut ERT2cut= "Bgo.GetERMin(2)>0";
+   void PrintInfor()
+   {
+     cout<<"\nused method:\t" <<myMethodList<<endl;
+     cout<<"outputFile:\t"<<outputFileName<<endl;
+     cout<<"intput signal files:\n";
+     for(size_t i=0;i<signalFiles.size();++i){
+       cout<<"\t\t"<<signalFiles.at(i)<<endl;
+     }
+     cout<<"intput background files:\n";
+     for(size_t i=0;i<backgroundFiles.size();++i){
+       cout<<"\t\t"<<backgroundFiles.at(i)<<endl;
+     }
+     cout<<"signal cut:\t"  <<SignalCut.GetTitle()<<endl;
+     cout<<"background cut:\t"<< BackgroundCut.GetTitle()<<endl;
+   }
+};
 
 bool BookMethod(TMVA::Factory *fac,TString methodList)
 {
@@ -223,12 +262,9 @@ bool BookMethod(TMVA::Factory *fac,TString methodList)
    if (Use["HMatrix"])
       fac->BookMethod( TMVA::Types::kHMatrix, "HMatrix", "!H:!V:VarTransform=None" );
 
-std::cout<<"\n\nDEBUG: "<<__FILE__<<"("<<__LINE__<<")"<<std::endl;
    // Linear discriminant (same as Fisher discriminant)
    if (Use["LD"])
       fac->BookMethod( TMVA::Types::kLD, "LD", "H:!V:VarTransform=None:CreateMVAPdfs:PDFInterpolMVAPdf=Spline2:NbinsMVAPdf=50:NsmoothMVAPdf=10" );
-
-std::cout<<"\n\nDEBUG: "<<__FILE__<<"("<<__LINE__<<")"<<std::endl;
 
    // Fisher discriminant (same as LD)
    if (Use["Fisher"])
@@ -324,7 +360,7 @@ std::cout<<"\n\nDEBUG: "<<__FILE__<<"("<<__LINE__<<")"<<std::endl;
   return true;
 }
 
-void DMP_BGO_Classification(TString myMethodList = "",TString SFName = "./4GeV_electron.root",TString BFName = "./10GeV_Pion.root") // spilt by ,
+void DMP_BGO_Classification(TString backgroundSelection ="") // spilt by ,
 {
         /*
    // The explicit loading of the shared libTMVA is done in TMVAlogon.C, defined in .rootrc
@@ -343,33 +379,47 @@ void DMP_BGO_Classification(TString myMethodList = "",TString SFName = "./4GeV_e
    // method based)
    */
 
-   TFile   *input_SF = TFile::Open(SFName);
-   if(input_SF == 0){
-     return;
+   if(backgroundSelection != ""){Conf::BackgroundCut = backgroundSelection;}
+
+   std::cout << "\n\n==> Start TMVAClassification:"<<endl;
+
+   std::cout<<"\n\tinput signal file:"<<std::endl;
+   TChain  *signal = new TChain(__treeName);
+   for(size_t i=0;i<Conf::signalFiles.size();++i){
+     signal->AddFile(Conf::signalFiles.at(i));
+     std::cout<<"\t\t"<<Conf::signalFiles.at(i)<<std::endl;
    }
-   TTree *signal     = (TTree*)input_SF->Get(__treeName);
-   TFile    *input_BF = TFile::Open(BFName);
-   if(input_BF == 0){
-     return;
+
+   std::cout<<"\n\tinput background file:"<<std::endl;
+   TChain *background = new TChain(__treeName);
+   for(size_t i=0;i<Conf::backgroundFiles.size();++i){
+     background->AddFile(Conf::backgroundFiles.at(i));
+     std::cout<<"\t\t"<<Conf::backgroundFiles.at(i)<<std::endl;
    }
-   TTree *background = (TTree*)input_BF->Get(__treeName);
+   //TFile    *input_BF = TFile::Open(BFName);
+   //if(input_BF == 0){
+   //  return;
+   //}
+   //TTree *background = (TTree*)input_BF->Get(__treeName);
+   // --------------------------------------------------------------------------------------------------
+   // --- Here the preparation phase begins
+   // Create a ROOT output file where TMVA will store ntuples, histograms, etc.
+   static int nTimes = 0;
+   Conf::outputFileName = Conf::myMethodList+"__TMVA";
+   Conf::outputFileName +=nTimes;
+   Conf::outputFileName += ".root";
+   ++nTimes;
+   TFile* outputFile = TFile::Open( Conf::outputFileName, "RECREATE" );
+   std::cout<<"\n\t==> output file:\t"<<Conf::outputFileName<<std::endl;
+
 // *
 // *  TODO:
 // *
    // This loads the library
    //TMVA::Tools::Instance();   // by me
 
-   // --------------------------------------------------------------------------------------------------
-   // --- Here the preparation phase begins
-   // Create a ROOT output file where TMVA will store ntuples, histograms, etc.
-   TString outfileName( "TMVA.root" );
-   TFile* outputFile = TFile::Open( outfileName, "RECREATE" );
-   std::cout << std::endl;
-   std::cout << "==> Start TMVAClassification:"<<endl;
-   std::cout<<"\n\tinput signal file:\t"<<input_SF->GetName()<<std::endl;
-   std::cout<<"\n\tinput background file:\t"<<input_BF->GetName() << std::endl;
-   std::cout<<"\n\t==> output file:\t"<<outputFile->GetName()<<std::endl;
 
+   // ------------------------------------------------------------------------------------------------
    // Create the factory object. Later you can choose the methods
    // whose performance you'd like to investigate. The factory is 
    // the only TMVA object you have to interact with
@@ -387,26 +437,48 @@ void DMP_BGO_Classification(TString myMethodList = "",TString SFName = "./4GeV_e
    // note that you may also use variable expressions, such as: "3*var1/var2*abs(var3)"
    // [all types of expressions that can also be parsed by TTree::Draw( "expression" )]
 
-   factory->AddVariable( "Bgo.GetTotalRMS()","TotalRMS","",'F');
+   //factory->AddVariable( "Bgo.GetTotalRMS()","TotalRMS","",'F');
+   //factory->AddVariable( "Bgo.fFValue[8]","F[8]","",'F');
+   //factory->AddVariable( "Bgo.fFValue[9]","F[9]","",'F');
+   //factory->AddVariable( "Bgo.fFValue[10]","F[10]","",'F');
+   //factory->AddVariable( "Bgo.fFValue[11]","F[11]","",'F');
+   //factory->AddVariable( "Bgo.fFValue[12]","F[12]","",'F');
+   //factory->AddVariable( "Bgo.fFValue[13]","F[13]","",'F');
+   //factory->AddVariable( "Bgo.GetEMax_ETail()","EMax/ETail","",'F');
+   //factory->AddVariable( "Bgo.GetEMax_ETail() / Bgo.GetTMax()","EMax/ETail/TMax","",'F');
+
+   // ===========>  value at tail. E ratio at tail is the best
+   factory->AddVariable( "Bgo.GetERatioAtTail()","ER at tail","",'F');  // better than F
+   factory->AddVariable( "Bgo.GetERatioOfEMaxLayer()","ER of TMax","",'F');
+   factory->AddVariable( "Bgo.GetTMax()","TMax","",'F');
+   factory->AddVariable( "Bgo.GetLayerIDOfCoG()","CoG_Z","",'F');
+   //factory->AddVariable( "Bgo.GetERL3(0,0)","ERL3(0)","",'F');
+   //factory->AddVariable( "Bgo.GetERL3_First2CoG()","ERL3_first2CoG","",'F');
+
+   //factory->AddVariable( "Bgo.GetERMin(2)","ERT2","",'F'); // better than F
+   //factory->AddVariable( "Bgo.GetFAtTail()","F at tail","",'F');  // better than G
+   //factory->AddVariable( "Bgo.GetGAtTail()","G at tail","",'F');
+
+   //factory->AddVariable( "Bgo.fLRMS","LRMS","",'F');
+   //factory->AddVariable( "Bgo.GetFiredBarNumber()","FiredBarNumber","",'I');
    //factory->AddVariable( "Bgo.GetPileupRatio()","PileupRatio","",'F');
-   factory->AddVariable( "Bgo.fFValue[11]","F[11]","",'F');
-   factory->AddVariable( "Bgo.fFValue[12]","F[12]","",'F');
-   factory->AddVariable( "Bgo.fLRMS","LRMS","",'F');
-   factory->AddVariable( "Bgo.GetFiredBarNumber()","FiredBarNumber","",'I');
-   factory->AddVariable( "Bgo.GetEnergyRatioOfEMaxLayer()","EnergyRatioOfEMaxLayer","",'F');
-   factory->AddVariable( "Bgo.GetWindowEnergyRatio()","WindowEnergyRatio","",'F');
-   factory->AddVariable( "Bgo.GetRMSOfEMaxLayer()","RMSOfEMaxLayer","",'F');
-   //factory->AddVariable( "Bgo.GetRFRatioOfEMaxLayer()","RFRatioOfEMaxLayer","",'F');
-   factory->AddVariable( "Bgo.GetLayerIDOfMaxRMS()","LayerIDOfMaxRMS","",'I');
+   //factory->AddVariable( "Bgo.GetWindowERatio()","WindowERatio","",'F');
+   //factory->AddVariable( "Bgo.GetRMSOfCoG()","RMSOfCoG","",'F');
+   //factory->AddVariable( "Bgo.GetGValueOfCoG()","GOfCoG","",'F');
+   //factory->AddVariable( "Bgo.GetGValue(0)","G at layer 0","",'F');
+   //factory->AddVariable( "Bgo.GetFractal(1,4)","Fractal","",'F');
+   //factory->AddVariable( "Bgo.GetLFractal(1,3)","LFractal","",'F');
+   //factory->AddVariable( "Bgo.GetLayerIDOfMaxRMS()","LayerIDOfMaxRMS","",'I');
 
    // You can add so-called "Spectator variables", which are not used in the MVA training,
    // but will appear in the final "TestTree" produced by TMVA. This TestTree will contain the
    // input variables, the response values of all trained MVAs, and the spectator variables
-   factory->AddSpectator( "Bgo.GetEntryPoint().x()","EntryPointX","mm",'F' );
-   factory->AddSpectator( "Bgo.GetEntryPoint().y()","EntryPointY","mm",'F' );
-   factory->AddSpectator( "Bgo.GetTrackDirection().Theta()","TrackTheta","",'F');
+   //factory->AddSpectator( "Bgo.GetEntryPoint().x()","EntryPointX","mm",'F' );
+   //factory->AddSpectator( "Bgo.GetEntryPoint().y()","EntryPointY","mm",'F' );
+   //factory->AddSpectator( "Bgo.GetTrackDirection().Theta()","TrackTheta","",'F');
    //factory->AddSpectator( "Bgo.GetMaxEnergyLayerID()","MaxEnergyLayer","",'I');
-   factory->AddSpectator( "Bgo.fTotE","RecoEnergy","MeV",'F' );
+   //factory->AddSpectator( "Bgo.fTotE","RecoEnergy","MeV",'F' );
+
    
    // global event weights per tree (see below for setting event-wise weights)
    Double_t signalWeight     = 1.0;
@@ -482,12 +554,6 @@ void DMP_BGO_Classification(TString myMethodList = "",TString SFName = "./4GeV_e
 // *
    //factory->SetBackgroundWeightExpression( "weight" );
 
-   // Apply additional cuts on the signal and background samples (can be different)
-   // TODO: does thoes cuts will be applied for testing data??
-   TCut mycuts = "Bgo.fTotE > 200 && Bgo.fTotE <450 && Bgo.fLRMS > 3.6 && Bgo.fLRMS < 4.4 && Bgo.GetTotalRMS()>-2 && Bgo.GetTotalRMS()<2";
-   TCut mycutb = "Bgo.fTotE > 0"; // for example: TCut mycutb = "abs(var1)<0.5";
-   TCut mycutc = "Bgo.fTotE >3400 && Bgo.fTotE < 4000"; // for example: TCut mycutb = "abs(var1)<0.5";
-   TCut passTrig = "Bgo.Group3_0000(0.2)";
 
    // Tell the factory how to use the training and testing events
    //
@@ -497,12 +563,12 @@ void DMP_BGO_Classification(TString myMethodList = "",TString SFName = "./4GeV_e
    // To also specify the number of testing events, use:
    //    factory->PrepareTrainingAndTestTree( mycut,
    //                                         "NSigTrain=3000:NBkgTrain=3000:NSigTest=3000:NBkgTest=3000:SplitMode=Random:!V" );
-   factory->PrepareTrainingAndTestTree( mycutc, mycutc,
+   factory->PrepareTrainingAndTestTree( Conf::T0 && Conf::SignalCut, Conf::T0 && Conf::BackgroundCut,
                                         "nTrain_Signal=0:nTrain_Background=0:SplitMode=Random:NormMode=NumEvents:!V" );
 
    //-------------------------------------------------------------------
    // Book Methods. Must after all setting
-   if( ! BookMethod(factory,myMethodList) ) return;
+   if( ! BookMethod(factory,Conf::myMethodList) ) return;
 
 
    // For an example of the category classifier usage, see: TMVAClassificationCategory
@@ -516,8 +582,10 @@ void DMP_BGO_Classification(TString myMethodList = "",TString SFName = "./4GeV_e
    // ---- Now you can tell the factory to train, test, and evaluate the MVAs
    // Train MVAs using the set of training events
    factory->TrainAllMethods();
+
    // ---- Evaluate all MVAs using the set of test events
    factory->TestAllMethods();
+
    // ----- Evaluate and compare performance of all configured MVAs
    factory->EvaluateAllMethods();
 
@@ -525,11 +593,11 @@ void DMP_BGO_Classification(TString myMethodList = "",TString SFName = "./4GeV_e
    // Save the output
    outputFile->Close();
 
-   std::cout << "==> Wrote root file: " << outputFile->GetName() << std::endl;
-   std::cout << "==> TMVAClassification is done!" << std::endl;
+   std::cout << "\n==> Wrote root file: " << Conf::outputFileName << std::endl;
+   Conf::PrintInfor();
    delete factory;
+   std::cout << "\n==> TMVAClassification is done!" << std::endl;
 
-   //if (!gROOT->IsBatch()){LoadGUI( outputFile->GetName() );}
-   if (!gROOT->IsBatch()) TMVAGui( outputFile->GetName() );
+   if (!gROOT->IsBatch()) TMVAGui( Conf::outputFileName );
 }
 

@@ -44,7 +44,9 @@ void Run()
 
 void MyTest( TString fn = "A2Data00_20141105_190544_Hits.root testData")
 {
-  DAMPE::Bgo::Conf::ouputPath = "./testData/";
+  DAMPE::Bgo::Conf::inputPath = "./Input/";
+  //DAMPE::Bgo::Conf::ouputPath = "./testData/";
+  DAMPE::Bgo::Conf::ouputPath = "./Output/";
   //DAMPE::Bgo::Conf::MaxEvents = 2;
   DAMPE::Bgo::BgoShowerCreator(fn);
   //DAMPE::Bgo::BgoShowerCreator("A2Data00_20141111_022025_Hits.root electron M300 P93_93_0");

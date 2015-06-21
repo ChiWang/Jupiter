@@ -57,11 +57,12 @@
 namespace Conf
 {
   std::vector<TString>  signalFiles(1,"./MC_eletron-150GeV_P43-Evts32000.root");
-  std::vector<TString>  backgroundFiles(1,"./MC_proton-400GeV_P43-Evts72200.root");
+  std::vector<TString>  backgroundFiles(1,"./MC_proton-400GeV_P43-Evts142200.root");
   //signalFiles.push_back("./MC_eletron-150GeV_P43-Evts32000.root");
   //backgroundFiles.push_back("./MC_proton-400GeV_P43-Evts72200.root");
 
   TString myMethodList = "MLP,MLPBNN,BDTG,BDT";
+  TString BDTGOpt = "!H:!V:NTrees=40:MinNodeSize=2.5%:BoostType=Grad:Shrinkage=0.10:UseBaggedBoost:BaggedSampleFraction=0.5:nCuts=20:MaxDepth=3";
   TString outputFileName = "TMVA.root";//myMethodList+"__TMVA";
 
    // Apply additional cuts on the signal and background samples (can be different)
@@ -92,7 +93,7 @@ namespace Conf
    }
 };
 
-bool BookMethod(TMVA::Factory *fac,TString methodList)
+bool BookMethod(TMVA::Factory *fac)
 {
   std::map<std::string,int> Use;
   // default methods
@@ -156,11 +157,11 @@ bool BookMethod(TMVA::Factory *fac,TString methodList)
   }
 
   // Select methods (don't look at this code - not of interest)
-   if (methodList != "") {
+   if (Conf::myMethodList != "") {
       for (std::map<std::string,int>::iterator it = Use.begin(); it != Use.end(); it++){
         it->second = 0;
       }
-      std::vector<TString> mlist = TMVA::gTools().SplitString(methodList, ',');
+      std::vector<TString> mlist = TMVA::gTools().SplitString(Conf::myMethodList, ',');
       for (UInt_t i=0; i<mlist.size(); i++) {
          std::string regMethod(mlist[i]);
          if (Use.find(regMethod) == Use.end()) {
@@ -333,12 +334,14 @@ bool BookMethod(TMVA::Factory *fac,TString methodList)
 
    // Boosted Decision Trees
    if (Use["BDTG"]) // Gradient Boost
-      fac->BookMethod( TMVA::Types::kBDT, "BDTG",
-                           "!H:!V:NTrees=1000:MinNodeSize=2.5%:BoostType=Grad:Shrinkage=0.10:UseBaggedBoost:BaggedSampleFraction=0.5:nCuts=20:MaxDepth=2" );
+      fac->BookMethod( TMVA::Types::kBDT, "BDTG",Conf::BDTGOpt);
+                           //"!H:!V:NTrees=40:MinNodeSize=2.5%:BoostType=Grad:Shrinkage=0.10:UseBaggedBoost:BaggedSampleFraction=0.5:nCuts=20:MaxDepth=3" );
+      //fac->BookMethod( TMVA::Types::kBDT, "BDTG",
+      //                     "!H:!V:NTrees=40:MinNodeSize=2.5%:BoostType=Grad:Shrinkage=0.10:UseBaggedBoost:BaggedSampleFraction=0.5:nCuts=20:MaxDepth=3" );
 
    if (Use["BDT"])  // Adaptive Boost
       fac->BookMethod( TMVA::Types::kBDT, "BDT",
-                           "!H:!V:NTrees=850:MinNodeSize=2.5%:MaxDepth=3:BoostType=AdaBoost:AdaBoostBeta=0.5:UseBaggedBoost:BaggedSampleFraction=0.5:SeparationType=GiniIndex:nCuts=20" );
+                           "!H:!V:NTrees= 20:MinNodeSize=2.5%:MaxDepth=2:BoostType=AdaBoost:AdaBoostBeta=0.5:UseBaggedBoost:BaggedSampleFraction=0.5:SeparationType=GiniIndex:nCuts=20" );
 
    if (Use["BDTB"]) // Bagging
       fac->BookMethod( TMVA::Types::kBDT, "BDTB",
@@ -360,7 +363,7 @@ bool BookMethod(TMVA::Factory *fac,TString methodList)
   return true;
 }
 
-void DMP_BGO_Classification(TString backgroundSelection ="") // spilt by ,
+void DMP_BGO_Classification() // spilt by ,
 {
         /*
    // The explicit loading of the shared libTMVA is done in TMVAlogon.C, defined in .rootrc
@@ -378,8 +381,6 @@ void DMP_BGO_Classification(TString backgroundSelection ="") // spilt by ,
    // but of course the real application is when you write your own
    // method based)
    */
-
-   if(backgroundSelection != ""){Conf::BackgroundCut = backgroundSelection;}
 
    std::cout << "\n\n==> Start TMVAClassification:"<<endl;
 
@@ -404,11 +405,7 @@ void DMP_BGO_Classification(TString backgroundSelection ="") // spilt by ,
    // --------------------------------------------------------------------------------------------------
    // --- Here the preparation phase begins
    // Create a ROOT output file where TMVA will store ntuples, histograms, etc.
-   static int nTimes = 0;
-   Conf::outputFileName = Conf::myMethodList+"__TMVA";
-   Conf::outputFileName +=nTimes;
-   Conf::outputFileName += ".root";
-   ++nTimes;
+   Conf::outputFileName = Conf::myMethodList+Conf::outputFileName;
    TFile* outputFile = TFile::Open( Conf::outputFileName, "RECREATE" );
    std::cout<<"\n\t==> output file:\t"<<Conf::outputFileName<<std::endl;
 
@@ -437,7 +434,7 @@ void DMP_BGO_Classification(TString backgroundSelection ="") // spilt by ,
    // note that you may also use variable expressions, such as: "3*var1/var2*abs(var3)"
    // [all types of expressions that can also be parsed by TTree::Draw( "expression" )]
 
-   //factory->AddVariable( "Bgo.GetTotalRMS()","TotalRMS","",'F');
+   factory->AddVariable( "Bgo.GetTotalRMS()","TotalRMS","",'F');
    //factory->AddVariable( "Bgo.fFValue[8]","F[8]","",'F');
    //factory->AddVariable( "Bgo.fFValue[9]","F[9]","",'F');
    //factory->AddVariable( "Bgo.fFValue[10]","F[10]","",'F');
@@ -452,7 +449,7 @@ void DMP_BGO_Classification(TString backgroundSelection ="") // spilt by ,
    factory->AddVariable( "Bgo.GetERatioOfEMaxLayer()","ER of TMax","",'F');
    factory->AddVariable( "Bgo.GetTMax()","TMax","",'F');
    factory->AddVariable( "Bgo.GetLayerIDOfCoG()","CoG_Z","",'F');
-   //factory->AddVariable( "Bgo.GetERL3(0,0)","ERL3(0)","",'F');
+   factory->AddVariable( "Bgo.GetERL3_F2L()","ERL3_F2L","",'F');
    //factory->AddVariable( "Bgo.GetERL3_First2CoG()","ERL3_first2CoG","",'F');
 
    //factory->AddVariable( "Bgo.GetERMin(2)","ERT2","",'F'); // better than F
@@ -464,6 +461,8 @@ void DMP_BGO_Classification(TString backgroundSelection ="") // spilt by ,
    //factory->AddVariable( "Bgo.GetPileupRatio()","PileupRatio","",'F');
    //factory->AddVariable( "Bgo.GetWindowERatio()","WindowERatio","",'F');
    //factory->AddVariable( "Bgo.GetRMSOfCoG()","RMSOfCoG","",'F');
+   factory->AddVariable( "Bgo.GetRMSOfEMaxLayer()","RMSOfEMaxLayer","",'F');
+   factory->AddVariable( "Bgo.fRMS[0]","RMSOfLayer0","",'F');
    //factory->AddVariable( "Bgo.GetGValueOfCoG()","GOfCoG","",'F');
    //factory->AddVariable( "Bgo.GetGValue(0)","G at layer 0","",'F');
    //factory->AddVariable( "Bgo.GetFractal(1,4)","Fractal","",'F');
@@ -568,7 +567,7 @@ void DMP_BGO_Classification(TString backgroundSelection ="") // spilt by ,
 
    //-------------------------------------------------------------------
    // Book Methods. Must after all setting
-   if( ! BookMethod(factory,Conf::myMethodList) ) return;
+   if( ! BookMethod(factory) ) return;
 
 
    // For an example of the category classifier usage, see: TMVAClassificationCategory

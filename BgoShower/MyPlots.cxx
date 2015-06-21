@@ -239,6 +239,9 @@ void MyDraw(TString exp, TString cuts= Cut["T0"], TString opt="")
     Conf::can.push_back(new TCanvas(cName,cName));
     Conf::can[Conf::can.size()-1]->cd();
   }
+  if(opt.Contains("sameq")){
+    opt = "";
+  }
   Conf::LinkTree()->Draw(exp,cuts,opt);
   gPad->SetGrid();
 }
@@ -427,7 +430,7 @@ void DrawEvent(TString selection)
 
 //-------------------------------------------------------------------
 //-------------------------------------------------------------------
-TProfile* EProfile(TString selection,bool use2D=false)
+TProfile* ERatioProfile(TString selection,bool use2D=false)
 {
     TString cName = "c";
           cName +=Conf::can.size();
@@ -438,7 +441,7 @@ TProfile* EProfile(TString selection,bool use2D=false)
           tmp.Remove(tmp.Last('.'),tmp.Length());
           cName +="--"+tmp;
 
-    TH2D *ERatioInL = new TH2D(cName+"E ratio","E ratio in layer;layer ID;E ratio",14,0,14,1000,0,1);
+    TH2D *ERatioInL = new TH2D(cName+"E ratio","E ratio in layer;layer ID;E ratio",14,0,14,200,0,1);
 
     TTree *t = Conf::LinkTree()->CopyTree(selection);
     t->SetBranchAddress("Bgo",&Conf::evt_bgo);
@@ -469,6 +472,125 @@ TProfile* EProfile(TString selection,bool use2D=false)
     }
 
     return ERatioInL_proX;
+}
+
+TProfile* EProfile(TString selection,bool use2D=false)
+{
+    TString cName = "c";
+          cName +=Conf::can.size();
+          cName +="-E_In_Layer_";
+          cName += selection;
+          TString tmp = Conf::inputFileName[Conf::inputFileName.size()-1];
+          tmp.Remove(0,tmp.Last('/')+1);
+          tmp.Remove(tmp.Last('.'),tmp.Length());
+          cName +="--"+tmp;
+
+    TTree *t = Conf::LinkTree()->CopyTree(selection);
+    t->SetBranchAddress("Bgo",&Conf::evt_bgo);
+    long entries = t->GetEntries();
+    cout<<"\t\tchoosed events:\t"<<entries<<endl;
+
+    double MaxE = 0;
+    for(int i=0;i<10;++i){
+      t->GetEntry(entries/(i+2) + i);
+      double eT = Conf::evt_bgo->GetTotalEnergy();
+      if(eT > MaxE) MaxE = eT;
+    }
+
+    TH2D *EInL = new TH2D(cName+"E","E in layer;layer ID;E / MeV",14,0,14,200,0,MaxE*0.5);
+
+    for(int ievt=0;ievt<entries;++ievt){
+      t->GetEntry(ievt);
+      //double eT = Conf::evt_bgo->GetTotalEnergy();
+      for(int i=0;i<BGO_LayerNO;++i){
+        if(Conf::evt_bgo->GetTotalEnergy(i) > 0){
+          EInL->Fill(i,Conf::evt_bgo->GetTotalEnergy(i));
+        }
+      }
+    }
+
+    Conf::can.push_back(new TCanvas(cName,cName));
+    gPad->SetGrid();
+    TProfile *EInL_proX = EInL->ProfileX();
+    EInL_proX->GetYaxis()->SetTitle("E / MeV");
+    Fig::SetMarker(EInL_proX,28,2,1);
+    Fig::SetAxis(EInL_proX);
+    gStyle->SetOptStat("");
+    if(use2D){
+      EInL->Draw("colz");
+    }else{
+      EInL_proX->Draw("e");
+    }
+
+    return EInL_proX;
+}
+
+void ETransProfile(TString selection)
+{
+    TString cName = "c";
+          cName +=Conf::can.size();
+          cName +="-E_Transvers";
+          cName += selection;
+          TString tmp = Conf::inputFileName[Conf::inputFileName.size()-1];
+          tmp.Remove(0,tmp.Last('/')+1);
+          tmp.Remove(tmp.Last('.'),tmp.Length());
+          cName +="--"+tmp;
+
+    TTree *t = Conf::LinkTree()->CopyTree(selection);
+    t->SetBranchAddress("Bgo",&Conf::evt_bgo);
+    long entries = t->GetEntries();
+    cout<<"\t\tchoosed events:\t"<<entries<<endl;
+
+    double MaxE = 0;
+    for(int i=0;i<10;++i){
+      t->GetEntry(entries/(i+2) + i);
+      double eT = Conf::evt_bgo->GetTotalEnergy();
+      if(eT > MaxE) MaxE = eT;
+    }
+
+    TH2D *EInBar_X = new TH2D(cName+"E_Bar_X","X layer(l0);Bar ID;E / MeV",22,0,22,200,0,MaxE*0.5);
+    TH2D *EInBar_Y = new TH2D(cName+"E_Bar_Y","Y layer(l1);Bar ID;E / MeV",22,0,22,200,0,MaxE*0.5);
+
+    for(int ievt=0;ievt<entries;++ievt){
+      t->GetEntry(ievt);
+      //double eT = Conf::evt_bgo->GetTotalEnergy();
+      for(int b=0;b<BGO_BarNO;++b){
+        double x=0,y=0;
+        for(int i=0;i<BGO_LayerNO;++i){
+          if(i%2 == 0){
+            x += Conf::evt_bgo->GetEnergyOfBar(i,b);
+          }else{
+            y += Conf::evt_bgo->GetEnergyOfBar(i,b);
+          }
+        }
+        EInBar_X->Fill(b,x);
+        EInBar_Y->Fill(b,y);
+      }
+    }
+
+    TCanvas *mc = new TCanvas(cName,cName);
+    Conf::can.push_back(mc);
+    mc->Divide(1,2);
+
+    mc->cd(1);
+    gPad->SetGrid();
+    TProfile *ebx = EInBar_X->ProfileX();
+    ebx->GetYaxis()->SetTitle("E / MeV");
+    Fig::SetMarker(ebx,28,2,1);
+    Fig::SetAxis(ebx);
+    gStyle->SetOptStat("");
+    ebx->Draw("e");
+
+    mc->cd(2);
+    gPad->SetGrid();
+    TProfile *eby = EInBar_Y->ProfileX();
+    eby->GetYaxis()->SetTitle("E / MeV");
+    Fig::SetMarker(eby,28,2,1);
+    Fig::SetAxis(eby);
+    gStyle->SetOptStat("");
+    eby->Draw("e");
+
+    //return EInL_proX;
 }
 
 TProfile* RMSProfile(TString selection,bool use2D=false)
@@ -779,7 +901,7 @@ TProfile *ERatioInLVSRecoE(TString selection,int layerID = -1,bool use2D = false
           tmp.Remove(tmp.Last('.'),tmp.Length());
           cName +="--"+tmp;
 
-    TH2D *ER_LogE = new TH2D(cName+"ERatio_LogE",";Log(E);ERatio",1600,8,20,800,0,0.5);
+    TH2D *ER_LogE = new TH2D(cName+"ERatio_LogE",";Log(E);ERatio",1600,0,20,800,0,1.0);
 
     TTree *t = Conf::LinkTree()->CopyTree(selection);
     t->SetBranchAddress("Bgo",&Conf::evt_bgo);
@@ -820,7 +942,7 @@ TProfile *ERatioInLVSRecoE(TString selection,int layerID = -1,bool use2D = false
 
 
 //-------------------------------------------------------------------
-void EnergySpectrum(int layer=-1, int barID=-1, TString cuts=Cut["T0"])
+void ESpectrum(TString cuts = Cut["T0"],int layer=-1, int barID=-1)
 {
         // (-1,-1) total. (layer, -1) each bar in this layer. (-1,bar) this barID in each layer
   if(layer < 0 && barID < 0){
@@ -870,9 +992,9 @@ void EnergySpectrum(int layer=-1, int barID=-1, TString cuts=Cut["T0"])
     Conf::LinkTree()->Draw(name,cuts);
     gPad->SetLogy();  gPad->SetGrid();
     c0->cd(24);
-    name = "Bgo.GetMaxClusterInLayer(";
+    name = "Bgo.GetEMaxBarInLayer(";
     name += layer;
-    name += ")->fSeedBarID";
+    name += ")->fBar";
     Conf::LinkTree()->Draw(name,cuts);
   }else{
     TString ex= "Bgo.GetEnergyOfBar(";
@@ -947,12 +1069,12 @@ void ThisValue(TString expre,TString electronFile, TString hadronFile,TString el
 //void MyDraw(TString exp, TString cuts= Cut["T0"], TString opt="")
 }
 
-TLegend* EProfile(TString electronFile, TString hadronFile,TString electronCut,TString protonCut,TString tagE="150GeV electron",TString tagP = "400GeV proton")
+TLegend* ERatioProfile(TString electronFile, TString hadronFile,TString electronCut,TString protonCut,TString tagE="150GeV electron",TString tagP = "400GeV proton")
 {
   Plot::ResetInputFile(electronFile);
-  TProfile *e=Plot::EProfile(electronCut);
+  TProfile *e=Plot::ERatioProfile(electronCut);
   Plot::ResetInputFile(hadronFile);
-  TProfile *p=Plot::EProfile(protonCut);
+  TProfile *p=Plot::ERatioProfile(protonCut);
 
   CreateCanvas("E Profile",electronFile,hadronFile,electronCut,protonCut);
   TLegend *l = Style(e,p,tagE,tagP);

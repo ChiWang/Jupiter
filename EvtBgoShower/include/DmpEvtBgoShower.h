@@ -88,14 +88,14 @@ public:
 public:
   int GetLayerIDOfMaxE(int fromWhichLayer=0,bool check=true)const;
   int GetLayerIDOfMinE()const;
-  int GetLayerIDOfMaxFiredBarNo()const;
+  int GetLayerIDOfMaxFiredBarNumber()const;
   int GetLayerIDOfMaxRMS()const;
   int GetLayerIDOfMinRMS()const;    // exclude un-fired layers
   int GetLayerIDOfMaxFValue()const;
   int GetLayerIDOfMinFValue()const;
   int GetLayerIDOfMaxGValue()const;
   int GetLayerIDOfMinGValue()const;
-  int GetLayerIDOfTail(double eCut=15,int nBarCut=1)const;  // last layer has e. NOTE:  at least 15MeV
+  int GetLayerIDOfTail(double eCut=15,int nBarCut=1)const;  // last layer has e. NOTE:  at least 15MeV(default eCut), and e of the layer before the last layer has e > eCut
   int GetLayerIDOfMaxERL3()const;
   int GetLayerIDOfMaxDeltaE()const;   // find delatE = ERatio[i] - ERatio[i-1], find the max value, return i
   int GetLayerIDOfMaxDeltaBarNo()const;   // find the position of deltaE = firedBarNum[i] - BarNum[i-1]
@@ -110,6 +110,7 @@ public:
 
   double GetTotalEnergy(int layerID = -1, int whichSide=-1)const;   // layer ID == -1, total energy of all layers.  whichside = {-1,0,1}= {combined | side_0 | side_1}
   int GetFiredBarNumber(int layerID = -1,double eCutLow=2.5)const;
+  int GetFiredBarNumberAtTail()const;
   int GetMaxFiredBarNumber()const;
   std::vector<int> GetFiredBarNumbers(double eCutLow = 2.5)const;
 
@@ -206,16 +207,19 @@ public:
 
 public: // for trigger
   bool T0(double threshold = 0.2)const;      // energy of any bar of first layer > 0.2 Mips (>4.6MeV)
+  bool Group0_11(double threshold_L0_n8, double threshold_L1_n8,double threshold_L2_n8,double threshold_L3_n8)const;    //  l0_d8_n | l1_d8_n | l2_d8_n | l3_d8_n
+  bool Group1_10(double threshold_L2_p8,double threshold_L10_P8,double threshold_L12_P8)const;    //  l2_d8_p & l10_d8_p & l12_d8_p
+  bool Group2_10(double threshold_L3_p8,double threshold_L11_p8,double threshold_L13_p8)const;    //  l3_d8_p & l11_d8_p & l13_d8_p
+  bool Group3_else(double threshold_L0_n5,double threshold_L1_n8,double threshold_L2_n8,double threshold_L3_n8)const;  //  l0_d5_n & l1_d8_n & l2_d8_n & l3_d8_n
+  bool Group4_001(double threshold_L0_P8,double threshold_L1_P8,double threshold_L2_P8,double threshold_L3_P8,double threshold_L10_P8,double threshold_L11_P8,double threshold_L12_P8,double threshold_L13_p8)const;   //  l0_d8_p & l1_d8_p & l2_d8_p & l3_d8_p & !(l10_d8_p | l11_d8_p | l12_d8_p | l13_d8_p)
+
   bool Group0_01(double threshold)const;    //  l0_d8_p | l1_d8_p | l2_d8_p | l3_d8_p
   bool Group0_10(double threshold)const;    //  l0_d5_p | l1_d5_p | l2_d5_p | l3_d5_p
-  bool Group0_11(double threshold)const;    //  l0_d8_n | l1_d8_n | l2_d8_n | l3_d8_n
   bool Group1_00(double threshold)const;    //  (l0_d8_p | l1_d8_p) & (l2_d8_p | l3_d8_p) & (l10_d8_p | l11_d8_p) & (l12_d8_p | l13_d8_p)
   bool Group1_01(double threshold)const;    //  (l0_d8_n | l1_d8_n) & (l12_d8_n | l13_d8_n)
-  bool Group1_10(double threshold)const;    //  l2_d8_p & l10_d8_p & l12_d8_p
   bool Group1_11(double threshold)const;    //  l0_d8_n & l12_d8_n
   bool Group2_00(double threshold)const;    //  l0_d8_p & l1_d8_p & l2_d8_p & l3_d8_p & l10_d8_p & l11_d8_p & l12_d8_p & l13_d8_p
   bool Group2_01(double threshold)const;    //  l0_d8_n & l1_d8_n & l12_d8_n & l13_d8_n
-  bool Group2_10(double threshold)const;    //  l3_d8_p & l11_d8_p & l13_d8_p
   bool Group2_11(double threshold)const;    //  l1_d8_n & l13_d8_n
   bool Group3_0000(double threshold)const;  //  l0_d8_n & l1_d8_n & l2_d8_n & l3_d8_n
   bool Group3_0001(double threshold)const;  //  l0_d5_n & l1_d5_n & l2_d8_n & l3_d8_n
@@ -228,9 +232,7 @@ public: // for trigger
   bool Group3_1000(double threshold)const;  //  (l0_d5_p | l0_d5_n) & (l1_d5_p | l1_d8_n) & (l2_d5_p | l2_d8_n) (l3_d5_p | l3_d8_n)
   bool Group3_1001(double threshold)const;  //  (l0_d5_p & l1_d5_p & l2_d5_p & l3_d5_p) | (l10_d5_p & l11_d5_p & l12_d5_p & l13_d5_p)
   bool Group3_1010(double threshold)const;  //  (l0_d5_n & l1_d5_n & l2_d5_n & l3_d5_n) | (l10_d5_n & l11_d5_n & l12_d5_n & l13_d5_n)
-  bool Group3_else(double threshold)const;  //  l0_d5_n & l1_d8_n & l2_d8_n & l3_d8_n
   bool Group4_000(double threshold)const;   //  l0_d8_p & l1_d8_p & l2_d8_p & l3_d8_p
-  bool Group4_001(double threshold)const;   //  l0_d8_p & l1_d8_p & l2_d8_p & l3_d8_p & !(l10_d8_p | l11_d8_p | l12_d8_p | l13_d8_p)
   bool Group4_010(double threshold)const;   //  l0_d8_p & l1_d8_p & l2_d8_p & l3_d8_p & !(l10_d8_n | l11_d8_n | l12_d8_n | l13_d8_n)
   bool Group4_011(double threshold)const;   //  l0_d8_n & l1_d8_p & l2_d8_p & l3_d8_p & !(l10_d8_p | l11_d8_p | l12_d8_p | l13_d8_p)
   bool Group4_100(double threshold)const;   //  (l0_d8_p | l1_d8_p | l2_d8_p | l3_d8_p) & !(l10_d8_p | l11_d8_p | l12_d8_p | l13_d8_p)
@@ -241,8 +243,6 @@ public: // for trigger
 public:
   double  CalculateTotalE(std::vector<DmpBgoFiredBar*> right)const;
   TVector3  CalculatePosition(std::vector<DmpBgoFiredBar*> right)const;
-
-private:
   bool _triggerFromLayer(int layerID,double threshold)const;
 
 public:

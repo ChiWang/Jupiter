@@ -573,7 +573,12 @@ int DmpEvtBgoShower::GetFiredBarNumber(int layerID,double e_low)const
 
 int DmpEvtBgoShower::GetMaxFiredBarNumber()const
 {
-  return this->GetFiredBarNumber(this->GetLayerIDOfMaxFiredBarNo());
+  return this->GetFiredBarNumber(this->GetLayerIDOfMaxFiredBarNumber());
+}
+
+int DmpEvtBgoShower::GetFiredBarNumberAtTail()const
+{
+  return this->GetFiredBarNumber(this->GetLayerIDOfTail());
 }
 
 std::vector<int> DmpEvtBgoShower::GetFiredBarNumbers(double e_low)const
@@ -587,7 +592,7 @@ std::vector<int> DmpEvtBgoShower::GetFiredBarNumbers(double e_low)const
   return b;
 }
 
-int DmpEvtBgoShower::GetLayerIDOfMaxFiredBarNo()const
+int DmpEvtBgoShower::GetLayerIDOfMaxFiredBarNumber()const
 {
   int id=-1;
   int mn=0;
@@ -1286,7 +1291,7 @@ bool DmpEvtBgoShower::T0(double threshold)const
 bool DmpEvtBgoShower::Group0_01(double threshold)const
 {
   if(this->T0()){
-    return (_triggerFromLayer(0,threshold)&&_triggerFromLayer(1,threshold)&&_triggerFromLayer(2,threshold)&&_triggerFromLayer(3,threshold));
+    return (_triggerFromLayer(0,threshold) || _triggerFromLayer(1,threshold) || _triggerFromLayer(2,threshold) || _triggerFromLayer(3,threshold));
   }
   return false;
 }
@@ -1299,10 +1304,10 @@ bool DmpEvtBgoShower::Group0_10(double threshold)const
   return false;
 }
 
-bool DmpEvtBgoShower::Group0_11(double threshold)const
+bool DmpEvtBgoShower::Group0_11(double threshold0,double threshold1,double threshold2 ,double threshold3)const
 {
   if(this->T0()){
-    return Group0_01(threshold);
+    return (_triggerFromLayer(0,threshold0) || _triggerFromLayer(1,threshold1) || _triggerFromLayer(2,threshold2) || _triggerFromLayer(3,threshold3));
   }
   return false;
 }
@@ -1329,10 +1334,10 @@ bool DmpEvtBgoShower::Group1_01(double threshold)const
   return false;
 }
 
-bool DmpEvtBgoShower::Group1_10(double threshold)const
+bool DmpEvtBgoShower::Group1_10(double threshold0,double threshold1,double threshold2)const
 {
   if(this->T0()){
-    return (_triggerFromLayer(2,threshold) && _triggerFromLayer(10,threshold) && _triggerFromLayer(12,threshold));
+    return (_triggerFromLayer(2,threshold0) && _triggerFromLayer(10,threshold1) && _triggerFromLayer(12,threshold2));
   }
   return false;
 }
@@ -1367,10 +1372,10 @@ bool DmpEvtBgoShower::Group2_01(double threshold)const
   return false;
 }
 
-bool DmpEvtBgoShower::Group2_10(double threshold)const
+bool DmpEvtBgoShower::Group2_10(double threshold0,double threshold1,double threshold2)const
 {
   if(this->T0()){
-    return (_triggerFromLayer(3,threshold) && _triggerFromLayer(11,threshold) && _triggerFromLayer(13,threshold));
+    return (_triggerFromLayer(3,threshold0) && _triggerFromLayer(11,threshold1) && _triggerFromLayer(13,threshold2));
   }
   return false;
 }
@@ -1470,10 +1475,10 @@ bool DmpEvtBgoShower::Group3_1010(double threshold)const
   return false;
 }
 
-bool DmpEvtBgoShower::Group3_else(double threshold)const
+bool DmpEvtBgoShower::Group3_else(double threshold0,double threshold1,double threshold2,double threshold3)const
 {
   if(this->T0()){
-    return true;
+    return (_triggerFromLayer(0,threshold0) && _triggerFromLayer(1,threshold1) && _triggerFromLayer(2,threshold2) && _triggerFromLayer(3,threshold3));
   }
   return false;
 }
@@ -1486,10 +1491,19 @@ bool DmpEvtBgoShower::Group4_000(double threshold)const
   return false;
 }
 
-bool DmpEvtBgoShower::Group4_001(double threshold)const
+bool DmpEvtBgoShower::Group4_001(double threshold0,double threshold1,double threshold2,double threshold3,double threshold4,double threshold5, double threshold6,double threshold7)const
 {
   if(this->T0()){
-    return true;
+    return (_triggerFromLayer(0,threshold0) &&
+            _triggerFromLayer(1,threshold1) &&
+            _triggerFromLayer(2,threshold2) &&
+            _triggerFromLayer(3,threshold3) &&
+       not (_triggerFromLayer(10,threshold4) ||
+            _triggerFromLayer(11,threshold5) ||
+            _triggerFromLayer(12,threshold6) ||
+            _triggerFromLayer(13,threshold7)
+           )
+            );
   }
   return false;
 }

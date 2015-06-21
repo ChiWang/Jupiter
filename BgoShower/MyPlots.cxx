@@ -1055,13 +1055,13 @@ namespace MC
   {
     TString cName = "c";
           cName +=Conf::can.size();
-          cName +=Form("-ParticleNumberOfEachEvent_%d-%d-%d",PDGCode,trackECut,zCut);
+          cName +=Form("-ParticleNumberOfEachEvent_%d-%f-%f",PDGCode,trackECut,zCut);
           cName += selection;
           TString tmp = Conf::inputFileName[Conf::inputFileName.size()-1];
           tmp.Remove(0,tmp.Last('/')+1);
           tmp.Remove(tmp.Last('.'),tmp.Length());
           cName +="--"+tmp;
-    TH1D *pNoInEvt = new TH1D(cName+Form("%d_%d_%d",PDGCode,trackECut,zCut),Form("PDGCode %d;Counts;Number",PDGCode),xMax,0,xMax);
+    TH1D *pNoInEvt = new TH1D(cName+Form("%d_%f_%f",PDGCode,trackECut,zCut),Form("PDGCode %d;Counts;Number",PDGCode),xMax,0,xMax);
     TTree *t = LinkMCTrack()->CopyTree(selection);
     t->SetBranchAddress("TrackVertex",&evt_MC_track);
     long entries = t->GetEntries();

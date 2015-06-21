@@ -23,6 +23,7 @@
 #include "TGraph.h"
 #include "TMath.h"
 #include "DmpEvtBgoShower.h"
+#include "DmpEvtMCTrack.h"
 
 #ifndef MyPlot_CXX
 #define MyPlot_CXX
@@ -36,7 +37,7 @@ namespace Conf
   vector<TString>   inputFileName;
 
   long nEvts = 0;
-  TChain *chain = 0;
+  TChain *chain_BGOShower = 0;
   DmpEvtBgoShower *evt_bgo = new DmpEvtBgoShower();
 
   TChain *LinkTree()
@@ -47,17 +48,18 @@ namespace Conf
       cout<<"\t\tPlot::AddInputFile(filename)\n"<<endl;
       return 0;
     }
-    if(chain == 0){
-      chain  = new TChain(__treeName);
+    if(chain_BGOShower == 0){
+      chain_BGOShower  = new TChain(__treeName);
       for(unsigned int i = 0;i<inputFileName.size();++i){
-        chain->AddFile(inputFileName[i]);
+        chain_BGOShower->AddFile(inputFileName[i]);
       }
-      chain->SetBranchAddress("Bgo",&evt_bgo);
-      nEvts = chain->GetEntries();
+      chain_BGOShower->SetBranchAddress("Bgo",&evt_bgo);
+      nEvts = chain_BGOShower->GetEntries();
       std::cout<<"===>  entries: "<<nEvts<<std::endl;
     }
-    return chain;
+    return chain_BGOShower;
   }
+
 };
 
 namespace Steer
@@ -99,7 +101,7 @@ namespace Steer
 
 };
 
-namespace Fig
+namespace Style
 {
   void SetAxis(TH1* h,float xSize=0.06,float xOffset=0.8,float ySize=0.06,float yOffset=0.8,float xLabelS= 0.05,float yLabelS=0.05)
   {
@@ -138,7 +140,6 @@ namespace Cuts
   //  //return (Conf::evt_bgo->GetFiredBarNumber() < 16 && Conf::evt_bgo->GetClusterNo(10) <16);
   //}
 */
-
 
 std::map<TString,TString>  Cut;
 #ifdef __MAKECINT__
@@ -180,14 +181,14 @@ void ResetInputFile(TString f)
 {
   Conf::inputFileName.clear();
   Conf::inputFileName.push_back(f);
-  if(Conf::chain){
-    delete Conf::chain;
+  if(Conf::chain_BGOShower){
+    delete Conf::chain_BGOShower;
   }
   gStyle->SetOptStat("ouiRMe");
-  Conf::chain = new TChain(__treeName);
-  Conf::chain->AddFile(f);
-  Conf::chain->SetBranchAddress("Bgo",&Conf::evt_bgo);
-  Conf::nEvts = Conf::chain->GetEntries();
+  Conf::chain_BGOShower = new TChain(__treeName);
+  Conf::chain_BGOShower->AddFile(f);
+  Conf::chain_BGOShower->SetBranchAddress("Bgo",&Conf::evt_bgo);
+  Conf::nEvts = Conf::chain_BGOShower->GetEntries();
   InitCuts();
 std::cout<<"===>  entries: "<<Conf::nEvts<<std::endl;
 }
@@ -195,15 +196,15 @@ std::cout<<"===>  entries: "<<Conf::nEvts<<std::endl;
 void AddInputFile(TString f)
 {
   Conf::inputFileName.push_back(f);
-  if(Conf::chain == 0){
-    Conf::chain = new TChain(__treeName);
+  if(Conf::chain_BGOShower == 0){
+    Conf::chain_BGOShower = new TChain(__treeName);
    gStyle->SetOptStat("ouiRMe");
   }
-  Conf::chain->AddFile(f);
+  Conf::chain_BGOShower->AddFile(f);
   if(Conf::evt_bgo == 0) {
-    Conf::chain->SetBranchAddress("Bgo",&Conf::evt_bgo);
+    Conf::chain_BGOShower->SetBranchAddress("Bgo",&Conf::evt_bgo);
   }
-  Conf::nEvts = Conf::chain->GetEntries();
+  Conf::nEvts = Conf::chain_BGOShower->GetEntries();
   InitCuts();
 std::cout<<"===>  entries: "<<Conf::nEvts<<std::endl;
 }
@@ -266,9 +267,9 @@ void DrawThisEvent(long evtID)
           tmp.Remove(tmp.Last('.'),tmp.Length());
           name +="--"+tmp;
   TH2F *xz =  new TH2F("XZ_"+name,"XZ;layer ID;bar ID",14,0,14,22,0,22); // xz->GetXaxis()->SetTitle("layer ID");   xz->GetYaxis()->SetTitle("bar ID");
-  Fig::SetAxis(xz);
+  Style::SetAxis(xz);
   TH2F *yz =  new TH2F("YZ_"+name,"YZ;layer ID;bar ID",14,0,14,22,0,22); // yz->GetXaxis()->SetTitle("layer ID");   yz->GetYaxis()->SetTitle("bar ID");
-  Fig::SetAxis(yz);
+  Style::SetAxis(yz);
 
   Conf::LinkTree()->GetEntry(evtID);
 
@@ -327,15 +328,15 @@ void DrawThisEvent(long evtID)
   TGraph *eInL = new TGraph(BGO_LayerNO,layerID,etInL);
   gPad->SetGrid();
   eInL->SetTitle("Energy profile;layer ID; E ratio");
-  Fig::SetAxis(eInL->GetHistogram());
-  Fig::SetMarker(eInL,30,2);
+  Style::SetAxis(eInL->GetHistogram());
+  Style::SetMarker(eInL,30,2);
   eInL->Draw();
 
   TGraph *ESeedInL = new TGraph(BGO_LayerNO,layerID,L_EOfSeedBar);
   ESeedInL->SetTitle("E of Seed Bar profile;layer ID;E ratio");
   gPad->SetGrid();
-  Fig::SetAxis(ESeedInL->GetHistogram());
-  Fig::SetMarker(ESeedInL,26,4);
+  Style::SetAxis(ESeedInL->GetHistogram());
+  Style::SetMarker(ESeedInL,26,4);
   ESeedInL->Draw("same pl");
 
   double lCoG = Conf::evt_bgo->GetLayerIDOfCoG();
@@ -362,24 +363,24 @@ void DrawThisEvent(long evtID)
   TGraph *RMSInL = new TGraph(BGO_LayerNO,layerID,Conf::evt_bgo->fRMS);
   RMSInL->SetTitle("RMS profile;layer ID;RMS");
   gPad->SetGrid();
-  Fig::SetAxis(RMSInL->GetHistogram());
-  Fig::SetMarker(RMSInL,33,2);
+  Style::SetAxis(RMSInL->GetHistogram());
+  Style::SetMarker(RMSInL,33,2);
   RMSInL->Draw();
 
   c1->cd(2);
   TGraph *FInL = new TGraph(BGO_LayerNO,layerID,Conf::evt_bgo->fFValue);
   FInL->SetTitle("F value profile ;layer ID;F");
   gPad->SetGrid();
-  Fig::SetAxis(FInL->GetHistogram());
-  Fig::SetMarker(FInL,29,4);
+  Style::SetAxis(FInL->GetHistogram());
+  Style::SetMarker(FInL,29,4);
   FInL->Draw();
 
   c1->cd(3);
   TGraph *GInL = new TGraph(BGO_LayerNO,layerID,L_g);
   GInL->SetTitle("G value profile;layer ID;G");
   gPad->SetGrid();
-  Fig::SetAxis(GInL->GetHistogram());
-  Fig::SetMarker(GInL,28,6);
+  Style::SetAxis(GInL->GetHistogram());
+  Style::SetMarker(GInL,28,6);
   GInL->Draw();
   //gStyle->SetOptStat(0);
 
@@ -387,8 +388,8 @@ void DrawThisEvent(long evtID)
   TGraph *FracInL = new TGraph(BGO_LayerNO,layerID,L_Fractal);
   FracInL->SetTitle("Fractal14;layer ID;F14");
   gPad->SetGrid();
-  Fig::SetAxis(FracInL->GetHistogram());
-  Fig::SetMarker(FracInL,23,3);
+  Style::SetAxis(FracInL->GetHistogram());
+  Style::SetMarker(FracInL,23,3);
   FracInL->Draw();
 
   Conf::can.push_back(new TCanvas("Display_trans2"+name,"Display_Trans_"+name));
@@ -399,8 +400,8 @@ void DrawThisEvent(long evtID)
   TGraph *ERL3InL = new TGraph(BGO_LayerNO,layerID,L_ERL3);
   ERL3InL->SetTitle("ERL3 profile;layer ID;ERL3");
   gPad->SetGrid();
-  Fig::SetAxis(ERL3InL->GetHistogram());
-  Fig::SetMarker(ERL3InL,21,4);
+  Style::SetAxis(ERL3InL->GetHistogram());
+  Style::SetMarker(ERL3InL,21,4);
   ERL3InL->Draw();
   //ESeedInL->Draw("same pl");
 
@@ -408,8 +409,8 @@ void DrawThisEvent(long evtID)
   TGraph *FBNoInL = new TGraph(BGO_LayerNO,layerID,L_firedBarNo);
   FBNoInL->SetTitle("fired bar No. profile;layer ID;fired bars");
   gPad->SetGrid();
-  Fig::SetAxis(FBNoInL->GetHistogram());
-  Fig::SetMarker(FBNoInL,27,4);
+  Style::SetAxis(FBNoInL->GetHistogram());
+  Style::SetMarker(FBNoInL,27,4);
   FBNoInL->Draw();
 }
 
@@ -462,8 +463,8 @@ TProfile* ERatioProfile(TString selection,bool use2D=false)
     gPad->SetGrid();
     TProfile *ERatioInL_proX = ERatioInL->ProfileX();
     ERatioInL_proX->GetYaxis()->SetTitle("E Ratio");
-    Fig::SetMarker(ERatioInL_proX,28,2,1);
-    Fig::SetAxis(ERatioInL_proX);
+    Style::SetMarker(ERatioInL_proX,28,2,1);
+    Style::SetAxis(ERatioInL_proX);
     gStyle->SetOptStat("");
     if(use2D){
       ERatioInL->Draw("colz");
@@ -513,8 +514,8 @@ TProfile* EProfile(TString selection,bool use2D=false)
     gPad->SetGrid();
     TProfile *EInL_proX = EInL->ProfileX();
     EInL_proX->GetYaxis()->SetTitle("E / MeV");
-    Fig::SetMarker(EInL_proX,28,2,1);
-    Fig::SetAxis(EInL_proX);
+    Style::SetMarker(EInL_proX,28,2,1);
+    Style::SetAxis(EInL_proX);
     gStyle->SetOptStat("");
     if(use2D){
       EInL->Draw("colz");
@@ -576,8 +577,8 @@ void ETransProfile(TString selection)
     gPad->SetGrid();
     TProfile *ebx = EInBar_X->ProfileX();
     ebx->GetYaxis()->SetTitle("E / MeV");
-    Fig::SetMarker(ebx,28,2,1);
-    Fig::SetAxis(ebx);
+    Style::SetMarker(ebx,28,2,1);
+    Style::SetAxis(ebx);
     gStyle->SetOptStat("");
     ebx->Draw("e");
 
@@ -585,8 +586,8 @@ void ETransProfile(TString selection)
     gPad->SetGrid();
     TProfile *eby = EInBar_Y->ProfileX();
     eby->GetYaxis()->SetTitle("E / MeV");
-    Fig::SetMarker(eby,28,2,1);
-    Fig::SetAxis(eby);
+    Style::SetMarker(eby,28,2,1);
+    Style::SetAxis(eby);
     gStyle->SetOptStat("");
     eby->Draw("e");
 
@@ -624,8 +625,8 @@ TProfile* RMSProfile(TString selection,bool use2D=false)
     gPad->SetGrid();
     TProfile *RMSInL_proX = RMSInL->ProfileX();
     RMSInL_proX->GetYaxis()->SetTitle("RMS");
-    Fig::SetMarker(RMSInL_proX,23,2,1);
-    Fig::SetAxis(RMSInL_proX);
+    Style::SetMarker(RMSInL_proX,23,2,1);
+    Style::SetAxis(RMSInL_proX);
     gStyle->SetOptStat("");
     if(use2D){
       RMSInL->Draw("colz");
@@ -667,8 +668,8 @@ TProfile* FProfile(TString selection,bool use2D=false)
     gPad->SetGrid();
     TProfile *FInL_proX = FInL->ProfileX();
     FInL_proX->GetYaxis()->SetTitle("F Value");
-    Fig::SetMarker(FInL_proX,25,2,1);
-    Fig::SetAxis(FInL_proX);
+    Style::SetMarker(FInL_proX,25,2,1);
+    Style::SetAxis(FInL_proX);
     gStyle->SetOptStat("");
     if(use2D){
       FInL->Draw("colz");
@@ -710,8 +711,8 @@ TProfile* GProfile(TString selection,bool use2D=false)
     gPad->SetGrid();
     TProfile *GInL_proX = GInL->ProfileX();
     GInL_proX->GetYaxis()->SetTitle("G Value");
-    Fig::SetMarker(GInL_proX,27,2,1);
-    Fig::SetAxis(GInL_proX);
+    Style::SetMarker(GInL_proX,27,2,1);
+    Style::SetAxis(GInL_proX);
     gStyle->SetOptStat("");
     if(use2D){
       GInL->Draw("colz");
@@ -756,8 +757,8 @@ TProfile* FractalProfile(TString selection,int nBar1=1,int nBar2=4,bool use2D=fa
     gPad->SetGrid();
     TProfile *FraInL_proX = FraInL->ProfileX();
     FraInL_proX->GetYaxis()->SetTitle(Form("F%d%d Value",nBar1,nBar2));
-    Fig::SetMarker(FraInL_proX,29,2,1);
-    Fig::SetAxis(FraInL_proX);
+    Style::SetMarker(FraInL_proX,29,2,1);
+    Style::SetAxis(FraInL_proX);
     gStyle->SetOptStat("");
     if(use2D){
       FraInL->Draw("colz");
@@ -798,8 +799,8 @@ TProfile* FiredBarNoProfile(TString selection,double eCut = 2.5,bool use2D=false
     gPad->SetGrid();
     TProfile *FNoInL_proX = FNoInL->ProfileX();
     FNoInL_proX->GetYaxis()->SetTitle("Fired Bar Number");
-    Fig::SetMarker(FNoInL_proX,25,2,1);
-    Fig::SetAxis(FNoInL_proX);
+    Style::SetMarker(FNoInL_proX,25,2,1);
+    Style::SetAxis(FNoInL_proX);
     gStyle->SetOptStat("");
     if(use2D){
       FNoInL->Draw();
@@ -839,8 +840,8 @@ TProfile* ERL3Profile(TString selection,int type=0,bool use2D=false)
     gPad->SetGrid();
     TProfile *ERL3InL_proX = ERL3InL->ProfileX();
     ERL3InL_proX->GetYaxis()->SetTitle("ERL3");
-    Fig::SetMarker(ERL3InL_proX,25,2,1);
-    Fig::SetAxis(ERL3InL_proX);
+    Style::SetMarker(ERL3InL_proX,25,2,1);
+    Style::SetAxis(ERL3InL_proX);
     gStyle->SetOptStat("");
     if(use2D){
       ERL3InL->Draw();
@@ -881,8 +882,8 @@ TProfile *TMaxZVSRecoE(TString selection,bool use2D =false)
       TMax_LogE->Draw("colz");
     }else{
       TMax_LogE_proX->GetYaxis()->SetTitle("TMax");
-      Fig::SetMarker(TMax_LogE_proX,25,2,1);
-      Fig::SetAxis(TMax_LogE_proX);
+      Style::SetMarker(TMax_LogE_proX,25,2,1);
+      Style::SetAxis(TMax_LogE_proX);
       gStyle->SetOptStat("");
       TMax_LogE_proX->Draw("e");
       }
@@ -927,8 +928,8 @@ TProfile *ERatioInLVSRecoE(TString selection,int layerID = -1,bool use2D = false
       ER_LogE->Draw("colz");
     }else{
       ER_LogE_proX->GetYaxis()->SetTitle("E Ratio");
-      Fig::SetMarker(ER_LogE_proX,25,2,1);
-      Fig::SetAxis(ER_LogE_proX);
+      Style::SetMarker(ER_LogE_proX,25,2,1);
+      Style::SetAxis(ER_LogE_proX);
       gStyle->SetOptStat("");
       ER_LogE_proX->Draw("e");
     }
@@ -1024,13 +1025,117 @@ void EntryBarID(TString cuts = Cut["Mips2"])
   MyDraw("Bgo.GetCoGBarIDInLayer(0):Bgo.GetCoGBarIDInLayer(1)",cuts,"colz");
 }
 
+namespace MC
+{
+
+  TChain *chain_Vertex = 0;
+  DmpEvtMCTrack *evt_MC_track = new DmpEvtMCTrack();
+
+  TChain *LinkMCTrack()
+  {
+    if(Conf::inputFileName.size() == 0){
+      cout<<"\tWARNING:\t do not have any input files"<<endl;
+      cout<<"\t\tPlot::ResetInputFile(filename)"<<endl;
+      cout<<"\t\tPlot::AddInputFile(filename)\n"<<endl;
+      return 0;
+    }
+    if(chain_Vertex == 0){
+      chain_Vertex  = new TChain("/Event/MCTruth");
+      for(unsigned int i = 0;i<Conf::inputFileName.size();++i){
+        chain_Vertex->AddFile(Conf::inputFileName[i]);
+      }
+      chain_Vertex->SetBranchAddress("TrackVertex",&evt_MC_track);
+      Conf::nEvts = chain_Vertex->GetEntries();
+      std::cout<<"===>  entries: "<<Conf::nEvts<<std::endl;
+    }
+    return chain_Vertex;
+  }
+
+  void ParticleNumberInEachEvt(short PDGCode,TString selection="",double trackECut = 0,double zCut = 0)//,double xMax = 50)
+  {
+    TString cName = "c";
+          cName +=Conf::can.size();
+          cName +=Form("-ParticleNumberOfEachEvent_%d-%d-%d",PDGCode,trackECut,zCut);
+          cName += selection;
+          TString tmp = Conf::inputFileName[Conf::inputFileName.size()-1];
+          tmp.Remove(0,tmp.Last('/')+1);
+          tmp.Remove(tmp.Last('.'),tmp.Length());
+          cName +="--"+tmp;
+    TH1D *pNoInEvt = new TH1D(cName+Form("%d_%d_%d",PDGCode,trackECut,zCut),Form("PDGCode %d;Counts;Number",PDGCode),xMax,0,xMax);
+    TTree *t = LinkMCTrack()->CopyTree(selection);
+    t->SetBranchAddress("TrackVertex",&evt_MC_track);
+    long entries = t->GetEntries();
+    cout<<"\t\tchoosed events:\t"<<entries<<endl;
+
+    for(int ievt=0;ievt<entries;++ievt){
+      t->GetEntry(ievt);
+      int nTrack = evt_MC_track->fTrackID.size();
+      //cout<<"nTrack = "<<nTrack<<endl;
+      int nMatch = 0;
+      for(int iTr =0;iTr <nTrack;++iTr){
+        if(evt_MC_track->fPDGCode.at(iTr) == PDGCode){
+          if(evt_MC_track->fEnergy.at(iTr) > trackECut){
+            if(evt_MC_track->fPosition.at(iTr).z() > zCut){
+              ++nMatch;
+            }
+          }
+        }
+      }
+      pNoInEvt->Fill(nMatch);
+    }
+
+    Conf::can.push_back(new TCanvas(cName,cName));
+    //gPad->SetGrid();
+    pNoInEvt->Draw();
+  }
+
+  /*
+  void Track_Z2K(short PDGCode,TString selection="",double trackECut = 0,double zCut = 0,double xMax = 50)
+  {
+    TString cName = "c";
+          cName +=Conf::can.size();
+          cName +=Form("-ZVSE_%d-%d-%d",PDGCode,trackECut,zCut);
+          cName += selection;
+          TString tmp = Conf::inputFileName[Conf::inputFileName.size()-1];
+          tmp.Remove(0,tmp.Last('/')+1);
+          tmp.Remove(tmp.Last('.'),tmp.Length());
+          cName +="--"+tmp;
+    TH2D *Z2E = new TH2D(cName+Form("%d_%d_%d",PDGCode,trackECut,zCut),Form("PDGCode %d;Z / mm; E / GeV",PDGCode),xMax,0,xMax);
+    TTree *t = LinkMCTrack()->CopyTree(selection);
+    t->SetBranchAddress("TrackVertex",&evt_MC_track);
+    long entries = t->GetEntries();
+    cout<<"\t\tchoosed events:\t"<<entries<<endl;
+
+    for(int ievt=0;ievt<entries;++ievt){
+      t->GetEntry(ievt);
+      int nTrack = evt_MC_track->fTrackID.size();
+      //cout<<"nTrack = "<<nTrack<<endl;
+      for(int iTr =0;iTr <nTrack;++iTr){
+        if(evt_MC_track->fPDGCode.at(iTr) == PDGCode){
+          if(evt_MC_track->fEnergy.at(iTr) > trackECut){
+            if(evt_MC_track->fPosition.at(iTr).z() > zCut){
+            }
+          }
+        }
+      }
+      pNoInEvt->Fill(nMatch);
+    }
+
+    Conf::can.push_back(new TCanvas(cName,cName));
+    //gPad->SetGrid();
+    pNoInEvt->Draw();
+  }
+  */
+
+};
+
 namespace Compare
 {
 
 TLegend* Style(TH1* ele, TH1 *pro,TString tagE,TString tagP)
 {
-  Fig::SetMarker(ele,28,kBlue,1.5);
-  Fig::SetMarker(pro,29,kRed,1.5);
+  Style::SetMarker(ele,28,kBlue,1.5);
+  Style::SetMarker(pro,29,kRed,1.5);
 
   TLegend *l = Plot::Steer::GetNewLegend();
   l->AddEntry(ele,tagE,"lp");

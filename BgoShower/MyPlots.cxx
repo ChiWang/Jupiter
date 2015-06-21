@@ -1051,7 +1051,7 @@ namespace MC
     return chain_Vertex;
   }
 
-  void ParticleNumberInEachEvt(short PDGCode,TString selection="",double trackECut = 0,double zCut = 0)//,double xMax = 50)
+  void ParticleNumberInEachEvt(short PDGCode,TString selection="",double trackECut = 0,double zCut = 0,double xMax = 50)
   {
     TString cName = "c";
           cName +=Conf::can.size();

@@ -207,11 +207,11 @@ public:
 
 public: // for trigger
   bool T0(double threshold = 0.2)const;      // energy of any bar of first layer > 0.2 Mips (>4.6MeV)
-  bool Group0_11(double threshold_L0_n8, double threshold_L1_n8,double threshold_L2_n8,double threshold_L3_n8)const;    //  l0_d8_n | l1_d8_n | l2_d8_n | l3_d8_n
-  bool Group1_10(double threshold_L2_p8,double threshold_L10_P8,double threshold_L12_P8)const;    //  l2_d8_p & l10_d8_p & l12_d8_p
-  bool Group2_10(double threshold_L3_p8,double threshold_L11_p8,double threshold_L13_p8)const;    //  l3_d8_p & l11_d8_p & l13_d8_p
-  bool Group3_else(double threshold_L0_n5,double threshold_L1_n8,double threshold_L2_n8,double threshold_L3_n8)const;  //  l0_d5_n & l1_d8_n & l2_d8_n & l3_d8_n
-  bool Group4_001(double threshold_L0_P8,double threshold_L1_P8,double threshold_L2_P8,double threshold_L3_P8,double threshold_L10_P8,double threshold_L11_P8,double threshold_L12_P8,double threshold_L13_p8)const;   //  l0_d8_p & l1_d8_p & l2_d8_p & l3_d8_p & !(l10_d8_p | l11_d8_p | l12_d8_p | l13_d8_p)
+  bool Group0_11(double threshold_L0_n8=4.35, double threshold_L1_n8=8.7,double threshold_L2_n8=8.7,double threshold_L3_n8=8.7)const;    //  l0_d8_n | l1_d8_n | l2_d8_n | l3_d8_n
+  bool Group1_10(double threshold_L2_p8=0.5,double threshold_L10_P8=0.5,double threshold_L12_P8=0.5)const;    //  l2_d8_p & l10_d8_p & l12_d8_p
+  bool Group2_10(double threshold_L3_p8=0.5,double threshold_L11_p8=0.5,double threshold_L13_p8=0.5)const;    //  l3_d8_p & l11_d8_p & l13_d8_p
+  bool Group3_else(double threshold_L0_n5=8.7,double threshold_L1_n8=8.7,double threshold_L2_n8=8.7,double threshold_L3_n8=8.7)const;  //  l0_d5_n & l1_d8_n & l2_d8_n & l3_d8_n
+  bool Group4_001(double threshold_L0_P8=0.2,double threshold_L1_P8=0.5,double threshold_L2_P8=0.5,double threshold_L3_P8=0.5,double threshold_L10_P8=0.5,double threshold_L11_P8=0.5,double threshold_L12_P8=0.5,double threshold_L13_p8=0.5)const;   //  l0_d8_p & l1_d8_p & l2_d8_p & l3_d8_p & !(l10_d8_p | l11_d8_p | l12_d8_p | l13_d8_p)
 
   bool Group0_01(double threshold)const;    //  l0_d8_p | l1_d8_p | l2_d8_p | l3_d8_p
   bool Group0_10(double threshold)const;    //  l0_d5_p | l1_d5_p | l2_d5_p | l3_d5_p

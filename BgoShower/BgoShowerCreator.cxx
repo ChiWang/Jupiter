@@ -30,7 +30,7 @@ namespace Bgo{
   namespace Conf
   {
     TString  inputPath = "./Input/";
-    TString  ouputPath = "./Output/";
+    TString  outputPath = "./Output/";
     //TString  inputTree = "/Event/Cal";
     long MaxEvents = 999999999;
   };
@@ -83,7 +83,7 @@ namespace Bgo{
     outName.Remove(outName.Last('_'));
     outName += "-Evts";
     outName += et;
-    TFile *output_f = new TFile(Conf::ouputPath+outName+".root","RECREATE");
+    TFile *output_f = new TFile(Conf::outputPath+outName+".root","RECREATE");
     output_f->mkdir("Event");
     TTree *tree_o = new TTree("Rec0","Rec0");
     DmpEvtBgoShower *evt_BgoShower = new DmpEvtBgoShower(); 

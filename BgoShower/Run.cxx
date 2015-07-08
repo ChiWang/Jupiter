@@ -11,7 +11,7 @@ void Run()
     gSystem->Load("$DMPSWWORK/lib/libDmpEvtBgoShower.so");
     gSystem->Load("$DMPSWWORK/lib/libDmpEventRaw.so");
     gSystem->Load("$DMPSWWORK/lib/libDmpEvtNudHits.so");
-    gSystem->Load("$DMPSWWORK/lib/libDmpEvtSim.so");
+    gSystem->Load("$DMPSWSYS/lib/libDmpEvtSim.so");
     gInterpreter->AddIncludePath("$DMPSWSYS/include");
     gInterpreter->AddIncludePath("$DMPSWWORK/include");
     gSystem->CompileMacro("./BgoShowerCreator.cxx","k",libName0);
@@ -32,7 +32,7 @@ void Run()
 
   TString libName2 ="libMyPlot_MC";
   if(gSystem->GetPathInfo(libName2,x)){
-    gSystem->Load("$DMPSWWORK/lib/libDmpEvtSim.so");
+    gSystem->Load("$DMPSWSYS/lib/libDmpEvtSim.so");
     gSystem->Load("$DMPSWWORK/lib/libDmpEvtBgoShower.so");
     //gInterpreter->AddIncludePath("$DMPSWSYS/include");
     gInterpreter->AddIncludePath("$DMPSWWORK/include");
@@ -45,8 +45,8 @@ void Run()
 void MyTest( TString fn = "A2Data00_20141105_190544_Hits.root testData")
 {
   DAMPE::Bgo::Conf::inputPath = "./Input/";
-  //DAMPE::Bgo::Conf::ouputPath = "./testData/";
-  DAMPE::Bgo::Conf::ouputPath = "./Output/";
+  //DAMPE::Bgo::Conf::outputPath = "./testData/";
+  DAMPE::Bgo::Conf::outputPath = "./Output/";
   //DAMPE::Bgo::Conf::MaxEvents = 2;
   DAMPE::Bgo::BgoShowerCreator(fn);
   //DAMPE::Bgo::BgoShowerCreator("A2Data00_20141111_022025_Hits.root electron M300 P93_93_0");
@@ -57,7 +57,7 @@ void TransforAll(TString filename = "input.list")
   ifstream in_log("./Output/"+filename);
   char tmp[256];
   bool beg = false;
-  DAMPE::Bgo::Conf::ouputPath = "./Output/";
+  DAMPE::Bgo::Conf::outputPath = "./Output/";
 
   //DAMPE::Bgo::Conf::MaxEvents = 20;
   while(!in_log.eof()){
@@ -80,24 +80,24 @@ void TransforAll(TString filename = "input.list")
 
 //-------------------------------------------------------------------
 //-------------------------------------------------------------------
-void MyTestSim(TString fname = "BTSimSPS_proton-400GeV_P43_68-Evts200-sim.root",double Resolution = 2.)
+void MyTestSim(TString fname = "BTSimSPS_proton-400GeV_P43_68-Evts200-sim.root",TString type = "MC",double Resolution = 2.5)
 {
-  DAMPE::Bgo::Conf::inputPath = "./SimData/root/";
-  //DAMPE::Bgo::Conf::inputPath = "./SimData/";
-  //DAMPE::Bgo::Conf::inputTree = "/Event/MCTruth";
+// type: MC;    MCTruth
+  DAMPE::Bgo::Conf::inputPath = "./InputSim/";
+  DAMPE::Bgo::Conf::outputPath = "./OutputSim/";
   //DAMPE::Bgo::Conf::MaxEvents = 2;
-  DAMPE::Bgo::BgoShowerCreator(fname,"MC");
+  DAMPE::Bgo::BgoShowerCreator(fname,type,Resolution);
   //DAMPE::Bgo::BgoShowerCreator("A2Data00_20141111_022025_Hits.root electron M300 P93_93_0");
 }
 
 void TransforAllSim(TString filename = "input.list")
 {
-  DAMPE::Bgo::Conf::inputPath = "./SimData/root/";
+  DAMPE::Bgo::Conf::inputPath = "./InputSim/";
   //DAMPE::Bgo::Conf::inputTree = "/Event/MCTruth";
-  ifstream in_log("./SimData/root/"+filename);
+  ifstream in_log("./InputSim/"+filename);
   char tmp[256];
   bool beg = false;
-  //DAMPE::Bgo::Conf::ouputPath = "./Output/";
+  DAMPE::Bgo::Conf::outputPath = "./OutputSim/";
 
   //DAMPE::Bgo::Conf::MaxEvents = 20;
   while(!in_log.eof()){

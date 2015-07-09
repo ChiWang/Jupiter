@@ -29,17 +29,6 @@ void Run()
   }else{
     gSystem->Load(libName1);
   }
-
-  TString libName2 ="libMyPlot_MC";
-  if(gSystem->GetPathInfo(libName2,x)){
-    gSystem->Load("$DMPSWSYS/lib/libDmpEvtSim.so");
-    gSystem->Load("$DMPSWWORK/lib/libDmpEvtBgoShower.so");
-    //gInterpreter->AddIncludePath("$DMPSWSYS/include");
-    gInterpreter->AddIncludePath("$DMPSWWORK/include");
-    gSystem->CompileMacro("./MyPlots_MC.cxx","k",libName2);
-  }else{
-    gSystem->Load(libName2);
-  }
 }
 
 void MyTest( TString fn = "A2Data00_20141105_190544_Hits.root testData")
@@ -63,15 +52,17 @@ void TransforAll(TString filename = "input.list")
   while(!in_log.eof()){
     in_log.getline(tmp,256);
     TString aLine = tmp;
-    if(aLine == "END"){
+    TString file = tmp;
+    aLine.ToLower();
+    if(aLine == "end"){
       break;
-    }else if(aLine.Contains("Begin")){
+    }else if(aLine == "begin"){
       beg = true;
-    }else if(aLine.Contains("Skip") || aLine.Contains("calibration") || aLine.Contains("pedestal") || aLine.Contains("Setup")){
+    }else if(aLine == "skip" || aLine == "calibration" || aLine == "pedestal" || aLine == "setup"){
       continue;
     }else{
-      if(beg && aLine.Contains("root")){
-        DAMPE::Bgo::BgoShowerCreator(aLine);
+      if(beg && file.Contains("root")){
+        DAMPE::Bgo::BgoShowerCreator(file);
       }
     }
   }
@@ -90,7 +81,7 @@ void MyTestSim(TString fname = "BTSimSPS_proton-400GeV_P43_68-Evts200-sim.root",
   //DAMPE::Bgo::BgoShowerCreator("A2Data00_20141111_022025_Hits.root electron M300 P93_93_0");
 }
 
-void TransforAllSim(TString filename = "input.list")
+void TransforAllSim(TString filename = "input.list",TString type="MC")
 {
   DAMPE::Bgo::Conf::inputPath = "./InputSim/";
   //DAMPE::Bgo::Conf::inputTree = "/Event/MCTruth";
@@ -103,15 +94,17 @@ void TransforAllSim(TString filename = "input.list")
   while(!in_log.eof()){
     in_log.getline(tmp,256);
     TString aLine = tmp;
-    if(aLine == "END"){
+    TString file = tmp;
+    aLine.ToLower();
+    if(aLine == "end"){
       break;
-    }else if(aLine.Contains("Begin")){
+    }else if(aLine == "begin"){
       beg = true;
-    }else if(aLine.Contains("Skip") || aLine.Contains("calibration") || aLine.Contains("pedestal") || aLine.Contains("Setup")){
+    }else if(aLine == "skip" || aLine == "calibration" || aLine == "pedestal" || aLine == "setup"){
       continue;
     }else{
-      if(beg && aLine.Contains("root")){
-        DAMPE::Bgo::BgoShowerCreator(aLine,"MC");
+      if(beg && file.Contains("root")){
+        DAMPE::Bgo::BgoShowerCreator(file,type);
       }
     }
   }

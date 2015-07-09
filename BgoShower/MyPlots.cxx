@@ -1,7 +1,10 @@
 /*
- *  $Id: MyPlots.cxx, 2015-01-23 14:23:31 DAMPE $
+ *  $Id: MyPlots.cxx, 2015-07-09 17:24:01 DAMPE $
  *  Author(s):
  *    Chi WANG (chiwang@mail.ustc.edu.cn) 23/01/2015
+//-------------------------------------------------------------------
+//for Bgo Shower
+ *
 */
 
 #include <vector>
@@ -24,10 +27,13 @@
 #include "TMath.h"
 #include "DmpEvtBgoShower.h"
 #include "DmpEvtMCTrack.h"
+#include "DmpEvtMCPrimaryParticle.h"
 
 #ifndef MyPlot_CXX
 #define MyPlot_CXX
 #define  __treeName "/Event/Rec0"
+#define  __mcVertex  "TrackVertex"
+#define  __mcPrim   "PrimaryParticle"
 
 namespace Plot
 {
@@ -39,6 +45,8 @@ namespace Conf
   long nEvts = 0;
   TChain *chain_BGOShower = 0;
   DmpEvtBgoShower *evt_bgo = new DmpEvtBgoShower();
+  DmpEvtMCTrack  *evt_mcVertex = 0;
+  DmpEvtMCPrimaryParticle *evt_mcPrim = 0;
 
   TChain *LinkTree()
   {
@@ -48,12 +56,24 @@ namespace Conf
       cout<<"\t\tPlot::AddInputFile(filename)\n"<<endl;
       return 0;
     }
+std::cout<<"DEBUG: "<<__FILE__<<"("<<__LINE__<<")"<<std::endl;
     if(chain_BGOShower == 0){
       chain_BGOShower  = new TChain(__treeName);
       for(unsigned int i = 0;i<inputFileName.size();++i){
         chain_BGOShower->AddFile(inputFileName[i]);
       }
       chain_BGOShower->SetBranchAddress("Bgo",&evt_bgo);
+std::cout<<"DEBUG: "<<__FILE__<<"("<<__LINE__<<")"<<std::endl;
+      if(chain_BGOShower->GetBranch(__mcVertex)){
+        evt_mcVertex = new DmpEvtMCTrack();
+        chain_BGOShower->SetBranchAddress(__mcVertex,&evt_mcVertex);
+std::cout<<"DEBUG: "<<__FILE__<<"("<<__LINE__<<")"<<std::endl;
+      }
+      if(chain_BGOShower->GetBranch(__mcPrim)){
+        evt_mcPrim = new DmpEvtMCPrimaryParticle();
+        chain_BGOShower->SetBranchAddress(__mcPrim,&evt_mcPrim);
+std::cout<<"DEBUG: "<<__FILE__<<"("<<__LINE__<<")"<<std::endl;
+      }
       nEvts = chain_BGOShower->GetEntries();
       std::cout<<"===>  entries: "<<nEvts<<std::endl;
     }
@@ -93,11 +113,11 @@ namespace Steer
     return lg;
   }
 
-  TString eFile = "./Output/MC_eletron-150GeV_P43-Evts32000.root";
-  TString pFile = "./Output/MC_proton-400GeV_P43-Evts72200.root";
+  TString eFile = "./Output/MC_eletron_150GeV_P43_Evts32000.root";
+  TString pFile = "./Output/MC_proton_400GeV_P43_Evts72200.root";
 
-  TString eFileD = "./Output/Data_e150GeV-P43_68_0-20141115_090724_093720_134904-Evts8792.root";
-  TString pFileD = "./Output/Data_p400GeV-P43_68_0.1-20141114_142921-222051-Evts4131.root";
+  TString eFileD = "./Output/Data_e150GeV_P43_68_0-20141115_090724_093720_134904_Evts8792.root";
+  TString pFileD = "./Output/Data_p400GeV_P43_68_0.1-20141114_142921-222051_Evts4131.root";
 
 };
 
@@ -183,6 +203,7 @@ void ResetInputFile(TString f)
   Conf::inputFileName.push_back(f);
   if(Conf::chain_BGOShower){
     delete Conf::chain_BGOShower;
+    Conf::chain_BGOShower = 0;
   }
   gStyle->SetOptStat("ouiRMe");
   Conf::chain_BGOShower = new TChain(__treeName);
@@ -412,6 +433,52 @@ void DrawThisEvent(long evtID)
   Style::SetAxis(FBNoInL->GetHistogram());
   Style::SetMarker(FBNoInL,27,4);
   FBNoInL->Draw();
+}
+
+void DrawThisEventTrack(long evtID,double TrackECut=5,int trackID = -1)
+{// TODO
+  TString name = "TrackingEventID_";
+          name += evtID;
+          TString tmp = Conf::inputFileName[Conf::inputFileName.size()-1];
+          tmp.Remove(0,tmp.Last('/')+1);
+          tmp.Remove(tmp.Last('.'),tmp.Length());
+          name +="--"+tmp;
+  TH2F *xz =  new TH2F("XZ_"+name,"XZ;Z;X",275,0,550,40,-40,40); // xz->GetXaxis()->SetTitle("layer ID");   xz->GetYaxis()->SetTitle("bar ID");
+  Style::SetAxis(xz);
+  TH2F *yz =  new TH2F("YZ_"+name,"YZ;Z;y",275,0,550,40,-40,40); // yz->GetXaxis()->SetTitle("layer ID");   yz->GetYaxis()->SetTitle("bar ID");
+  Style::SetAxis(yz);
+
+  Conf::LinkTree()->GetEntry(evtID);
+
+  cout<<"\n\nEvent ID: "<<evtID<<endl;
+  cout<<"\tprimary particle:\t"<<Conf::evt_mcPrim->PDGcode()<<endl;//"\t("<<Conf::evt_mcPrim->Position().x()<<","<<Conf::evt_mcPrim->Position().y()<<","<<Conf::evt_mcPrim->Position().z()<<")\ttheta = "<<Conf::evt_mcPrim->Direction().Theta()<<endl;
+  cout<<"\tReconstructed E_BGO = "<<Conf::evt_bgo->fTotE/1000<<" GeV"<<endl;
+
+  int nVertex = Conf::evt_mcVertex->fTrackID.size();
+  for(int it = 0;it<nVertex;++nVertex){
+    if(Conf::evt_mcVertex->fEnergy.at(it) < TrackECut) continue;
+    int prtID = Conf::evt_mcVertex->fTrackID.at(it);
+    if( trackID == it || trackID == -1){
+      for(int p=0;p<nVertex;++p){
+        if(Conf::evt_mcVertex->fEnergy.at(p) < TrackECut) continue;
+        if(Conf::evt_mcVertex->fParentID.at(p) == prtID){
+          xz->Fill(Conf::evt_mcVertex->fPosition.at(p).z(),Conf::evt_mcVertex->fPosition.at(p).x());
+          yz->Fill(Conf::evt_mcVertex->fPosition.at(p).z(),Conf::evt_mcVertex->fPosition.at(p).y());
+        }
+      }
+    }
+  }
+
+  Conf::can.push_back(new TCanvas("Display_"+name,"Display_"+name));
+  TCanvas *c0 = Conf::can[Conf::can.size()-1];
+  gStyle->SetOptStat("");
+  c0->Divide(1,2);
+  c0->cd(1);
+  //gPad->SetGrid();
+  xz->Draw("colz");
+
+  c0->cd(2);
+  yz->Draw("colz");
 }
 
 void DrawEvent(TString selection)
@@ -1025,109 +1092,7 @@ void EntryBarID(TString cuts = Cut["Mips2"])
   MyDraw("Bgo.GetCoGBarIDInLayer(0):Bgo.GetCoGBarIDInLayer(1)",cuts,"colz");
 }
 
-namespace MC
-{
 
-  TChain *chain_Vertex = 0;
-  DmpEvtMCTrack *evt_MC_track = new DmpEvtMCTrack();
-
-  TChain *LinkMCTrack()
-  {
-    if(Conf::inputFileName.size() == 0){
-      cout<<"\tWARNING:\t do not have any input files"<<endl;
-      cout<<"\t\tPlot::ResetInputFile(filename)"<<endl;
-      cout<<"\t\tPlot::AddInputFile(filename)\n"<<endl;
-      return 0;
-    }
-    if(chain_Vertex == 0){
-      chain_Vertex  = new TChain("/Event/MCTruth");
-      for(unsigned int i = 0;i<Conf::inputFileName.size();++i){
-        chain_Vertex->AddFile(Conf::inputFileName[i]);
-      }
-      chain_Vertex->SetBranchAddress("TrackVertex",&evt_MC_track);
-      Conf::nEvts = chain_Vertex->GetEntries();
-      std::cout<<"===>  entries: "<<Conf::nEvts<<std::endl;
-    }
-    return chain_Vertex;
-  }
-
-  void ParticleNumberInEachEvt(short PDGCode,TString selection="",double trackECut = 0,double zCut = 0,double xMax = 50)
-  {
-    TString cName = "c";
-          cName +=Conf::can.size();
-          cName +=Form("-ParticleNumberOfEachEvent_%d-%f-%f",PDGCode,trackECut,zCut);
-          cName += selection;
-          TString tmp = Conf::inputFileName[Conf::inputFileName.size()-1];
-          tmp.Remove(0,tmp.Last('/')+1);
-          tmp.Remove(tmp.Last('.'),tmp.Length());
-          cName +="--"+tmp;
-    TH1D *pNoInEvt = new TH1D(cName+Form("%d_%f_%f",PDGCode,trackECut,zCut),Form("PDGCode %d;Counts;Number",PDGCode),xMax,0,xMax);
-    TTree *t = LinkMCTrack()->CopyTree(selection);
-    t->SetBranchAddress("TrackVertex",&evt_MC_track);
-    long entries = t->GetEntries();
-    cout<<"\t\tchoosed events:\t"<<entries<<endl;
-
-    for(int ievt=0;ievt<entries;++ievt){
-      t->GetEntry(ievt);
-      int nTrack = evt_MC_track->fTrackID.size();
-      //cout<<"nTrack = "<<nTrack<<endl;
-      int nMatch = 0;
-      for(int iTr =0;iTr <nTrack;++iTr){
-        if(evt_MC_track->fPDGCode.at(iTr) == PDGCode){
-          if(evt_MC_track->fEnergy.at(iTr) > trackECut){
-            if(evt_MC_track->fPosition.at(iTr).z() > zCut){
-              ++nMatch;
-            }
-          }
-        }
-      }
-      pNoInEvt->Fill(nMatch);
-    }
-
-    Conf::can.push_back(new TCanvas(cName,cName));
-    //gPad->SetGrid();
-    pNoInEvt->Draw();
-  }
-
-  /*
-  void Track_Z2K(short PDGCode,TString selection="",double trackECut = 0,double zCut = 0,double xMax = 50)
-  {
-    TString cName = "c";
-          cName +=Conf::can.size();
-          cName +=Form("-ZVSE_%d-%d-%d",PDGCode,trackECut,zCut);
-          cName += selection;
-          TString tmp = Conf::inputFileName[Conf::inputFileName.size()-1];
-          tmp.Remove(0,tmp.Last('/')+1);
-          tmp.Remove(tmp.Last('.'),tmp.Length());
-          cName +="--"+tmp;
-    TH2D *Z2E = new TH2D(cName+Form("%d_%d_%d",PDGCode,trackECut,zCut),Form("PDGCode %d;Z / mm; E / GeV",PDGCode),xMax,0,xMax);
-    TTree *t = LinkMCTrack()->CopyTree(selection);
-    t->SetBranchAddress("TrackVertex",&evt_MC_track);
-    long entries = t->GetEntries();
-    cout<<"\t\tchoosed events:\t"<<entries<<endl;
-
-    for(int ievt=0;ievt<entries;++ievt){
-      t->GetEntry(ievt);
-      int nTrack = evt_MC_track->fTrackID.size();
-      //cout<<"nTrack = "<<nTrack<<endl;
-      for(int iTr =0;iTr <nTrack;++iTr){
-        if(evt_MC_track->fPDGCode.at(iTr) == PDGCode){
-          if(evt_MC_track->fEnergy.at(iTr) > trackECut){
-            if(evt_MC_track->fPosition.at(iTr).z() > zCut){
-            }
-          }
-        }
-      }
-      pNoInEvt->Fill(nMatch);
-    }
-
-    Conf::can.push_back(new TCanvas(cName,cName));
-    //gPad->SetGrid();
-    pNoInEvt->Draw();
-  }
-  */
-
-};
 
 namespace Compare
 {

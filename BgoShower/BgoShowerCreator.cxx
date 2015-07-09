@@ -19,6 +19,8 @@
 #include "DmpEvtHeader.h"
 #include "DmpEvtBgoHits.h"
 #include "DmpEvtBgoShower.h"
+#include "DmpEvtMCTrack.h"
+#include "DmpEvtMCPrimaryParticle.h"
 #include "DmpBgoBase.h"
 
 #ifndef BgoShowerCreator_CXX
@@ -45,7 +47,7 @@ namespace Bgo{
   {
     TObjArray *opt = inLine.Tokenize(" ");
     TString out = ((TObjString*)opt->At(0))->GetString();
-    out.Remove(0,out.First("_")+1);
+    out.Remove(0,out.First('_')+1);
     TString tag ="";
     for(int i=1;i<opt->GetEntriesFast();++i){
       tag += ((TObjString*)opt->At(i))->GetString()+"-";
@@ -73,6 +75,7 @@ namespace Bgo{
       inputTree = "/Event/MCTruth";
       bName = "Bgo";
     }
+
     TTree *tree_i = (TTree*)(input_f->Get(inputTree));
     DmpEvtBgoHits *event_bgo = new DmpEvtBgoHits();
     tree_i->SetBranchAddress(bName,&event_bgo);
@@ -81,19 +84,29 @@ namespace Bgo{
     et =  (et>Conf::MaxEvents)?Conf::MaxEvents:et;
     TString outName = GetOutFileName(file_Rec0,type);
     outName.Remove(outName.Last('_'));
-    outName += "-Evts";
+    outName += "_Evts";
     outName += et;
+    outName.ReplaceAll('-','_');
     TFile *output_f = new TFile(Conf::outputPath+outName+".root","RECREATE");
     output_f->mkdir("Event");
     TTree *tree_o = new TTree("Rec0","Rec0");
     DmpEvtBgoShower *evt_BgoShower = new DmpEvtBgoShower(); 
     tree_o->Branch("Bgo",evt_BgoShower->GetName(),&evt_BgoShower);
 
-    DmpEvtHeader *event_Header = new DmpEvtHeader();
-    DmpEvtHeader *evt_Header = new DmpEvtHeader();
+    DmpEvtHeader *event_Header = 0;//new DmpEvtHeader();
+    DmpEvtMCPrimaryParticle *MC_prim = 0;
+    DmpEvtMCTrack *MC_vertex = 0;
     if(type == "Data"){
+      event_Header = new DmpEvtHeader();
       tree_i->SetBranchAddress("EventHeader",&event_Header);
-      tree_o->Branch("EventHeader",evt_Header->GetName(),&evt_Header);
+      tree_o->Branch("EventHeader",event_Header->GetName(),&event_Header);
+    }else{
+      MC_prim = new DmpEvtMCPrimaryParticle();
+      tree_i->SetBranchAddress("PrimaryParticle",&MC_prim);
+      tree_o->Branch("PrimaryParticle",MC_prim->GetName(),&MC_prim);
+      MC_vertex = new DmpEvtMCTrack();
+      tree_i->SetBranchAddress("TrackVertex",&MC_vertex);
+      tree_o->Branch("TrackVertex",MC_vertex->GetName(),&MC_vertex);
     }
 
     cout<<"\nProcessing "<<input_f->GetName()<<"\t ===> "<<output_f->GetName()<<std::endl;
@@ -102,7 +115,6 @@ namespace Bgo{
     for(long ievt = 0;ievt<et;++ievt){
       //if(ievt % 500 == 0) std::cout<<" ..."<<ievt<<std::endl;
       tree_i->GetEntry(ievt);
-      evt_Header->LoadFrom(event_Header);
       std::map<int,std::vector<DmpBgoFiredBar*> > firedBar; // key: layer ID
       short nBar = event_bgo->fGlobalBarID.size();
       for(short ib =0;ib<nBar;++ib){
@@ -194,7 +206,6 @@ namespace Bgo{
       }
       tree_o->Fill();
       evt_BgoShower->Reset();
-      evt_Header->Reset();
     //clock_t s3=clock();
     //std::cout<<"T3 = DEBUG: "<<__FILE__<<"("<<__LINE__<<")\t\t"<<s3<<std::endl;
     }
@@ -204,8 +215,15 @@ namespace Bgo{
 
     //clock_t se=clock();
     //std::cout<<"T end = DEBUG: "<<__FILE__<<"("<<__LINE__<<")\t\t"<<se<<std::endl;
-    delete event_Header;
-    delete evt_Header;
+    if(event_Header){
+      delete event_Header;
+    }
+    if(MC_prim){
+      delete MC_prim;
+    }
+    if(MC_vertex){
+      delete MC_vertex;
+    }
     delete event_bgo;
     delete evt_BgoShower;
     delete input_f;

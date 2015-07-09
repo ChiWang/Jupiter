@@ -56,23 +56,19 @@ namespace Conf
       cout<<"\t\tPlot::AddInputFile(filename)\n"<<endl;
       return 0;
     }
-std::cout<<"DEBUG: "<<__FILE__<<"("<<__LINE__<<")"<<std::endl;
     if(chain_BGOShower == 0){
       chain_BGOShower  = new TChain(__treeName);
       for(unsigned int i = 0;i<inputFileName.size();++i){
         chain_BGOShower->AddFile(inputFileName[i]);
       }
       chain_BGOShower->SetBranchAddress("Bgo",&evt_bgo);
-std::cout<<"DEBUG: "<<__FILE__<<"("<<__LINE__<<")"<<std::endl;
       if(chain_BGOShower->GetBranch(__mcVertex)){
         evt_mcVertex = new DmpEvtMCTrack();
         chain_BGOShower->SetBranchAddress(__mcVertex,&evt_mcVertex);
-std::cout<<"DEBUG: "<<__FILE__<<"("<<__LINE__<<")"<<std::endl;
       }
       if(chain_BGOShower->GetBranch(__mcPrim)){
         evt_mcPrim = new DmpEvtMCPrimaryParticle();
         chain_BGOShower->SetBranchAddress(__mcPrim,&evt_mcPrim);
-std::cout<<"DEBUG: "<<__FILE__<<"("<<__LINE__<<")"<<std::endl;
       }
       nEvts = chain_BGOShower->GetEntries();
       std::cout<<"===>  entries: "<<nEvts<<std::endl;
@@ -204,30 +200,22 @@ void ResetInputFile(TString f)
   if(Conf::chain_BGOShower){
     delete Conf::chain_BGOShower;
     Conf::chain_BGOShower = 0;
+    gStyle->SetOptStat("ouiRMe");
   }
-  gStyle->SetOptStat("ouiRMe");
-  Conf::chain_BGOShower = new TChain(__treeName);
-  Conf::chain_BGOShower->AddFile(f);
-  Conf::chain_BGOShower->SetBranchAddress("Bgo",&Conf::evt_bgo);
-  Conf::nEvts = Conf::chain_BGOShower->GetEntries();
   InitCuts();
-std::cout<<"===>  entries: "<<Conf::nEvts<<std::endl;
+  Conf::LinkTree();
 }
 
 void AddInputFile(TString f)
 {
   Conf::inputFileName.push_back(f);
   if(Conf::chain_BGOShower == 0){
-    Conf::chain_BGOShower = new TChain(__treeName);
-   gStyle->SetOptStat("ouiRMe");
+    ResetInputFile(f);
+  }else{
+    Conf::chain_BGOShower->AddFile(f);
+    Conf::nEvts = Conf::chain_BGOShower->GetEntries();
+    std::cout<<"===>  entries: "<<Conf::nEvts<<std::endl;
   }
-  Conf::chain_BGOShower->AddFile(f);
-  if(Conf::evt_bgo == 0) {
-    Conf::chain_BGOShower->SetBranchAddress("Bgo",&Conf::evt_bgo);
-  }
-  Conf::nEvts = Conf::chain_BGOShower->GetEntries();
-  InitCuts();
-std::cout<<"===>  entries: "<<Conf::nEvts<<std::endl;
 }
 
 void PrintInputFile()
@@ -433,52 +421,6 @@ void DrawThisEvent(long evtID)
   Style::SetAxis(FBNoInL->GetHistogram());
   Style::SetMarker(FBNoInL,27,4);
   FBNoInL->Draw();
-}
-
-void DrawThisEventTrack(long evtID,double TrackECut=5,int trackID = -1)
-{// TODO
-  TString name = "TrackingEventID_";
-          name += evtID;
-          TString tmp = Conf::inputFileName[Conf::inputFileName.size()-1];
-          tmp.Remove(0,tmp.Last('/')+1);
-          tmp.Remove(tmp.Last('.'),tmp.Length());
-          name +="--"+tmp;
-  TH2F *xz =  new TH2F("XZ_"+name,"XZ;Z;X",275,0,550,40,-40,40); // xz->GetXaxis()->SetTitle("layer ID");   xz->GetYaxis()->SetTitle("bar ID");
-  Style::SetAxis(xz);
-  TH2F *yz =  new TH2F("YZ_"+name,"YZ;Z;y",275,0,550,40,-40,40); // yz->GetXaxis()->SetTitle("layer ID");   yz->GetYaxis()->SetTitle("bar ID");
-  Style::SetAxis(yz);
-
-  Conf::LinkTree()->GetEntry(evtID);
-
-  cout<<"\n\nEvent ID: "<<evtID<<endl;
-  cout<<"\tprimary particle:\t"<<Conf::evt_mcPrim->PDGcode()<<endl;//"\t("<<Conf::evt_mcPrim->Position().x()<<","<<Conf::evt_mcPrim->Position().y()<<","<<Conf::evt_mcPrim->Position().z()<<")\ttheta = "<<Conf::evt_mcPrim->Direction().Theta()<<endl;
-  cout<<"\tReconstructed E_BGO = "<<Conf::evt_bgo->fTotE/1000<<" GeV"<<endl;
-
-  int nVertex = Conf::evt_mcVertex->fTrackID.size();
-  for(int it = 0;it<nVertex;++nVertex){
-    if(Conf::evt_mcVertex->fEnergy.at(it) < TrackECut) continue;
-    int prtID = Conf::evt_mcVertex->fTrackID.at(it);
-    if( trackID == it || trackID == -1){
-      for(int p=0;p<nVertex;++p){
-        if(Conf::evt_mcVertex->fEnergy.at(p) < TrackECut) continue;
-        if(Conf::evt_mcVertex->fParentID.at(p) == prtID){
-          xz->Fill(Conf::evt_mcVertex->fPosition.at(p).z(),Conf::evt_mcVertex->fPosition.at(p).x());
-          yz->Fill(Conf::evt_mcVertex->fPosition.at(p).z(),Conf::evt_mcVertex->fPosition.at(p).y());
-        }
-      }
-    }
-  }
-
-  Conf::can.push_back(new TCanvas("Display_"+name,"Display_"+name));
-  TCanvas *c0 = Conf::can[Conf::can.size()-1];
-  gStyle->SetOptStat("");
-  c0->Divide(1,2);
-  c0->cd(1);
-  //gPad->SetGrid();
-  xz->Draw("colz");
-
-  c0->cd(2);
-  yz->Draw("colz");
 }
 
 void DrawEvent(TString selection)
@@ -1092,6 +1034,58 @@ void EntryBarID(TString cuts = Cut["Mips2"])
   MyDraw("Bgo.GetCoGBarIDInLayer(0):Bgo.GetCoGBarIDInLayer(1)",cuts,"colz");
 }
 
+namespace MCTrack{
+
+//DmpEvtMCTrack  *holder =new DmpEvtMCTrack(); 
+
+void DrawThisEventTrack(long evtID,double TrackECut=5,int trackID = -1)
+{
+  TString name = "EventID_";
+          name += evtID;
+          name += Form("ECut%f_TrkID%d",TrackECut,trackID);
+          TString tmp = Conf::inputFileName[Conf::inputFileName.size()-1];
+          tmp.Remove(0,tmp.Last('/')+1);
+          tmp.Remove(tmp.Last('.'),tmp.Length());
+          name +="--"+tmp;
+  TH2F *xz =  new TH2F("XZ_"+name,"XZ;Z;X",275,0,550,40,-40,40); // xz->GetXaxis()->SetTitle("layer ID");   xz->GetYaxis()->SetTitle("bar ID");
+  Style::SetAxis(xz);
+  TH2F *yz =  new TH2F("YZ_"+name,"YZ;Z;y",275,0,550,40,-40,40); // yz->GetXaxis()->SetTitle("layer ID");   yz->GetYaxis()->SetTitle("bar ID");
+  Style::SetAxis(yz);
+
+  Conf::LinkTree()->GetEntry(evtID);
+
+  cout<<"\n\nEvent ID: "<<evtID<<endl;
+  cout<<"\tprimary particle:\t"<<Conf::evt_mcPrim->PDGcode()<<"\t("<<Conf::evt_mcPrim->Position().x()<<","<<Conf::evt_mcPrim->Position().y()<<","<<Conf::evt_mcPrim->Position().z()<<")\ttheta = "<<Conf::evt_mcPrim->Direction().Theta()<<endl;
+  cout<<"\tReconstructed E_BGO = "<<Conf::evt_bgo->fTotE/1000<<" GeV"<<endl;
+
+  int nVertex = Conf::evt_mcVertex->fTrackID.size();
+  for(int it = 0;it<nVertex;++it){
+    if(Conf::evt_mcVertex->fEnergy.at(it) < TrackECut) continue;
+    int prtID = Conf::evt_mcVertex->fTrackID.at(it);
+    if( trackID == it || trackID == -1){
+      for(int p=0;p<nVertex;++p){
+        if(Conf::evt_mcVertex->fEnergy.at(p) < TrackECut) continue;
+        if(Conf::evt_mcVertex->fParentID.at(p) == prtID){
+          xz->Fill(Conf::evt_mcVertex->fPosition.at(p).z(),Conf::evt_mcVertex->fPosition.at(p).x());
+          yz->Fill(Conf::evt_mcVertex->fPosition.at(p).z(),Conf::evt_mcVertex->fPosition.at(p).y());
+        }
+      }
+    }
+  }
+
+  Conf::can.push_back(new TCanvas("Display_"+name,"Display_"+name));
+  TCanvas *c0 = Conf::can[Conf::can.size()-1];
+  gStyle->SetOptStat("");
+  c0->Divide(1,2);
+  c0->cd(1);
+  //gPad->SetGrid();
+  xz->Draw("colz");
+
+  c0->cd(2);
+  yz->Draw("colz");
+}
+
+};
 
 
 namespace Compare
@@ -1431,7 +1425,6 @@ void HowManyIsolateBarFit(double TotEnergyCut_low = 0,double TotEnergyCut_hi = 5
       }
       eSum += isoEnergy[i];
     }
-    //std::cout<<"DEBUG: "<<__FILE__<<"("<<__LINE__<<")"<<std::endl;
     double lRMS = TMath::RMS(nisobar,lid);
     double bRMS = TMath::RMS(nisobar,bid);
     double eMean = TMath::Mean(nisobar,elist);

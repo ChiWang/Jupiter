@@ -16,6 +16,13 @@
 
 typedef TVector3 Position;
 typedef TVector3 Direction;
+//typedef std::vector<>TVector3 Direction;
+
+struct DmpBgoMatrix
+{
+  void Reset();
+  double m[7][22];
+};
 
 class DmpBgoFiredBar : public TObject
 {
@@ -187,7 +194,7 @@ public:
   DmpEvtBgoCluster *GetEMaxClusterInGMinLayer()const;
   DmpEvtBgoCluster *GetEMaxClusterInLayer(int layerID)const;
   DmpEvtBgoCluster *GetEMinClusterInLayer(int layerID)const;
-  std::vector<DmpEvtBgoCluster*> GetAllClusterInLayer(int layerID)const;
+  std::vector<DmpEvtBgoCluster*> GetAllClusterInLayer(int layerID,double eLowCut = 5)const;
   std::vector<double> GetERatioOfClustersInLayer(int layerID)const;
 
 public:
@@ -196,14 +203,21 @@ public:
   DmpBgoFiredBar*   GetEMaxBarInLayer(int layerID)const;
   std::vector<DmpBgoFiredBar*>  GetBars(int layerID,double eBarCut_Low,double eClusterCut)const;
 
+public: // isolated bars
   std::vector<DmpBgoFiredBar*>  GetIsolatedBar(std::vector<int> layerIDs,double noise=2.5)const;  // if nextBar.fE < noise, the current bar is isolated
   DmpBgoFiredBar* GetEMaxIsolatedBar(std::vector<int> LayerIDs,double noise = 2.5)const;
   DmpBgoFiredBar* GetEMinIsolatedBar(std::vector<int> fromLayerID,double noise = 2.5)const;
   std::vector<DmpBgoFiredBar*>  GetIsolatedBar(std::vector<int> layerIDs,double eLow,double eHigh,double noise=2.5)const;  // if nextBar.fE < noise, the current bar is isolated, only return isolated bar whose energy > eLow and < eHigh
   int GetLayerIDOfMostIsolatedBars(double eLow,double eHigh,double noise=2.5)const;
   int GetIsolatedBarNo(std::vector<int> L,double elow, double eHigh, double noise = 2.5)const;
-  double GetBRMSOfIsolatedBar(std::vector<int> l,double eLow,double eHigh,double noise = 2.5)const;
-  double GetLRMSOfIsolatedBar(std::vector<int> l,double eLow,double eHigh,double noise = 2.5)const;
+  double GetBRMSOfIsolatedBar(double eLow,double eHigh,double noise = 2.5,bool EnergyWeight=true)const;
+  double GetLRMSOfIsolatedBar(double eLow,double eHigh,double noise = 2.5,bool EnergyWeight=true)const;
+  double GetRMS_Distance2CoGOfIsolatedBar(double eLow,double eHigh,double noise=2.5, bool EnergyWeight=true)const;
+  double GetTotal_Distance2CoGOfIsolatedBar(double eLow,double eHigh,double noise=2.5, bool EnergyWeight=true)const;
+
+public: // filter
+  void LoadEMatrix(DmpBgoMatrix *x,DmpBgoMatrix *y)const;    // first step load matrix from Bgo shower
+  
 
 public: // for trigger
   bool T0(double threshold = 0.2)const;      // energy of any bar of first layer > 0.2 Mips (>4.6MeV)

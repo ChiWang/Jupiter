@@ -19,6 +19,31 @@ ClassImp(DmpBgoFiredBar)
 ClassImp(DmpEvtBgoCluster)
 ClassImp(DmpEvtBgoShower)
 
+double __MyRMS(int n, const double* a, const double *w=0){
+  if(n == 0) return 0;
+  double mean = 0;
+  for(int i=0;i<n;++i){
+    mean += a[i];
+  }
+  mean = mean / n;
+  double total=0;
+  double totalW = 0;
+  for(int i=0;i<n;++i){
+    total += TMath::Power(a[i] - mean,2) * (w ? w[i] : 1);
+    totalW += w ? w[i] : 1;
+  }
+  return total / totalW;
+}
+
+void DmpBgoMatrix::Reset()
+{
+  for(int l=0;l<7;++l){
+    for(int b =0;b<22;++b){
+      m[l][b] = 0;
+    }
+  }
+}
+
 //-------------------------------------------------------------------
 DmpBgoFiredBar::DmpBgoFiredBar()
 {
@@ -618,12 +643,12 @@ DmpEvtBgoCluster* DmpEvtBgoShower::AddNewCluster(DmpBgoFiredBar *seedBar)
 }
 
 //-------------------------------------------------------------------
-std::vector<DmpEvtBgoCluster*> DmpEvtBgoShower::GetAllClusterInLayer(int l)const
+std::vector<DmpEvtBgoCluster*> DmpEvtBgoShower::GetAllClusterInLayer(int l,double eLowCut)const
 {
   std::vector<DmpEvtBgoCluster*>    cInLayer;
   for(int i=0;i<fClusters->GetEntriesFast();++i){
     DmpEvtBgoCluster *aC = dynamic_cast<DmpEvtBgoCluster*>(fClusters->At(i));
-    if(aC->fLayer == l){
+    if(aC->fLayer == l && aC->fTotE > eLowCut){
       cInLayer.push_back(aC);
     }
   }
@@ -762,26 +787,38 @@ int DmpEvtBgoShower::GetIsolatedBarNo(std::vector<int> l, double el, double eh,d
   return aa.size();
 }
 
-double DmpEvtBgoShower::GetBRMSOfIsolatedBar(std::vector<int> L,double el,double eh,double noise)const
+double DmpEvtBgoShower::GetBRMSOfIsolatedBar(double el,double eh,double noise,bool weight)const
 {
-  std::vector<DmpBgoFiredBar*>  ab = this->GetIsolatedBar(L,el,eh,noise);
+  std::vector<int>  lID;
+  for(int l = 0;l<14;++l){
+    lID.push_back(l);
+  }
+  std::vector<DmpBgoFiredBar*>  ab = this->GetIsolatedBar(lID,el,eh,noise);
   int n = ab.size();
-  int bs[n];
+  double bs[n];
+  double en[n];
   for(int i=0;i<n;++i){
     bs[i]  = ab[i]->fBar;
+    en[i] = ab[i]->fE;
   }
-  return TMath::RMS(n,bs);
+  return  weight ? __MyRMS(n,bs,en) : __MyRMS(n,bs);
 }
 
-double DmpEvtBgoShower::GetLRMSOfIsolatedBar(std::vector<int> l,double el,double eh,double noise)const
+double DmpEvtBgoShower::GetLRMSOfIsolatedBar(double el,double eh,double noise,bool weight)const
 {
-  std::vector<DmpBgoFiredBar*>  ab = this->GetIsolatedBar(l,el,eh,noise);
+  std::vector<int>  lID;
+  for(int l = 0;l<14;++l){
+    lID.push_back(l);
+  }
+  std::vector<DmpBgoFiredBar*>  ab = this->GetIsolatedBar(lID,el,eh,noise);
   int n = ab.size();
-  int bs[n];
+  double bs[n];
+  double en[n];
   for(int i=0;i<n;++i){
     bs[i]  = ab[i]->fLayer;
+    en[i] = ab[i]->fE;
   }
-  return TMath::RMS(n,bs);
+  return  weight ? __MyRMS(n,bs,en) : __MyRMS(n,bs);
 }
 
 //-------------------------------------------------------------------
@@ -1883,6 +1920,65 @@ double DmpEvtBgoShower::GetFractalOfRMSMaxLayer(int b1,int b2)const
 {
   int l = this->GetLayerIDOfMaxRMS();
   return this->GetFractal(l,b1,b2);
+}
+
+double DmpEvtBgoShower::GetRMS_Distance2CoGOfIsolatedBar(double eLow,double eHigh,double noise,bool EnergyWeigt)const
+{
+  std::vector<DmpBgoFiredBar*>  isoBars;
+  std::vector<int>  lID;
+  std::vector<double>  CoG;
+  for(int l = 0;l<14;++l){
+    lID.push_back(l);
+    CoG.push_back(this->GetCoGBarIDInLayer(l));
+  }
+  isoBars = this->GetIsolatedBar(lID,eLow,eHigh,noise);
+  int nB = isoBars.size();
+  double Dis[nB];
+  double Eng[nB];
+  for(int n =0;n<nB;++n){
+    Dis[n]  = TMath::Abs(isoBars.at(n)->fBar - CoG[isoBars.at(n)->fLayer]);
+    Eng[n] = isoBars.at(n)->fE;
+  }
+  return EnergyWeigt ?  __MyRMS(nB,Dis,Eng) : __MyRMS(nB,Dis);
+}
+
+double DmpEvtBgoShower::GetTotal_Distance2CoGOfIsolatedBar(double eLow,double eHigh,double noise,bool EnergyWeigt)const
+{
+  std::vector<DmpBgoFiredBar*>  isoBars;
+  std::vector<int>  lID;
+  std::vector<double>  CoG;
+  for(int l = 0;l<14;++l){
+    lID.push_back(l);
+    CoG.push_back(this->GetCoGBarIDInLayer(l));
+  }
+  isoBars = this->GetIsolatedBar(lID,eLow,eHigh,noise);
+  int nB = isoBars.size();
+  double TotalDis = 0;
+  double totalEng = 0;
+  for(int n =0;n<nB;++n){
+    TotalDis  += TMath::Abs(isoBars.at(n)->fBar - CoG[isoBars.at(n)->fLayer]) * isoBars.at(n)->fE;
+    totalEng += isoBars.at(n)->fE;
+  }
+  return EnergyWeigt ? (TotalDis / totalEng) : TotalDis;
+}
+
+void DmpEvtBgoShower::LoadEMatrix(DmpBgoMatrix *x, DmpBgoMatrix *y)const
+{
+  x->Reset();
+  y->Reset();
+  int nClus = fClusters->GetEntriesFast();
+  for(int i=0;i<nClus;++i){
+    DmpEvtBgoCluster *aC = dynamic_cast<DmpEvtBgoCluster*>(fClusters->At(i));
+    int nBar = aC->fFiredBar->GetEntriesFast();
+    for(int ib = 0;ib<nBar;++ib){
+      DmpBgoFiredBar *aB = dynamic_cast<DmpBgoFiredBar*>(aC->fFiredBar->At(i));
+      if( aB->fLayer %2 == 0){
+        x->m[aB->fLayer / 2][aB->fBar] = aB->fE;
+      }else{
+        y->m[aB->fLayer / 2][aB->fBar] = aB->fE;
+      }
+    }
+  }
 }
 
 /*

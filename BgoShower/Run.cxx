@@ -12,8 +12,8 @@ void Run()
     gSystem->Load("$DMPSWWORK/lib/libDmpEventRaw.so");
     gSystem->Load("$DMPSWWORK/lib/libDmpEvtNudHits.so");
     gSystem->Load("$DMPSWSYS/lib/libDmpEvtSim.so");
-    gInterpreter->AddIncludePath("$DMPSWSYS/include");
     gInterpreter->AddIncludePath("$DMPSWWORK/include");
+    gInterpreter->AddIncludePath("$DMPSWSYS/include");
     gSystem->CompileMacro("./BgoShowerCreator.cxx","k",libName0);
   }else{
     gSystem->Load(libName0);
@@ -23,8 +23,8 @@ void Run()
   if(gSystem->GetPathInfo(libName1,x)){
     //gSystem->Load("$DMPSWSYS/lib/libDmpEvent.so");
     gSystem->Load("$DMPSWWORK/lib/libDmpEvtBgoShower.so");
-    //gInterpreter->AddIncludePath("$DMPSWSYS/include");
     gInterpreter->AddIncludePath("$DMPSWWORK/include");
+    gInterpreter->AddIncludePath("$DMPSWSYS/include");
     gSystem->CompileMacro("./MyPlots.cxx","k",libName1);
   }else{
     gSystem->Load(libName1);
